@@ -5,6 +5,7 @@ import team.phoenix.backend.domain.model.*;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -55,9 +56,11 @@ public class CommissionCalculator {
                 String.format("%.2f x %.4f = %.2f", salesBase, effectiveRate, c));
         }
 
-        double bonuses = applyBonuses(hr, individualSales, storeSales, exceptions);
+        BonusResult bonusResult = applyBonuses(hr, individualSales, storeSales, exceptions);
         return new CommissionResult(hr.getMatricula(), month.toString(), hr,
-            salesBase, effectiveRate, rule.base(), bonuses, rule.base() + bonuses,
+            salesBase, effectiveRate, rule.base(),
+            bonusResult.descriptions(), bonusResult.total(),
+            rule.base() + bonusResult.total(),
             rule.name(), rule.explanation());
     }
 
@@ -74,29 +77,45 @@ public class CommissionCalculator {
         return rate;
     }
 
-    private double applyBonuses(HrRecord hr, double indSales, double storeSales,
-                                List<MonthlyException> exceptions) {
+    private BonusResult applyBonuses(HrRecord hr, double indSales, double storeSales,
+                                     List<MonthlyException> exceptions) {
         double total = 0.0;
+        List<String> descriptions = new ArrayList<>();
         for (var ex : exceptions) {
             switch (ex.getType()) {
                 case BONUS_FIXED -> {
-                    if (hr.getMatricula().equals(ex.getMatricula())) total += ex.getAmount();
+                    if (hr.getMatricula().equals(ex.getMatricula())) {
+                        total += ex.getAmount();
+                        descriptions.add(String.format("BONUS_FIXED: R$%.2f", ex.getAmount()));
+                    }
                 }
                 case SALES_BONUS_TIER -> {
                     if ((ex.getCodMarca() == null || ex.getCodMarca().equals(hr.getCodMarca()))
-                            && (ex.isAppliesToManagers() || hr.getCodCargo() != MANAGER_CARGO))
-                        total += matchTier(ex.getBonusTiers(), indSales);
+                            && (ex.isAppliesToManagers() || hr.getCodCargo() != MANAGER_CARGO)) {
+                        double bonus = matchTier(ex.getBonusTiers(), indSales);
+                        if (bonus > 0) {
+                            total += bonus;
+                            descriptions.add(String.format("SALES_BONUS_TIER: R$%.2f", bonus));
+                        }
+                    }
                 }
                 case STORE_BONUS_TIER -> {
                     if (hr.getCodCargo() == MANAGER_CARGO && ex.isAppliesToManagers()
-                            && (ex.getCodMarca() == null || ex.getCodMarca().equals(hr.getCodMarca())))
-                        total += matchTier(ex.getBonusTiers(), storeSales);
+                            && (ex.getCodMarca() == null || ex.getCodMarca().equals(hr.getCodMarca()))) {
+                        double bonus = matchTier(ex.getBonusTiers(), storeSales);
+                        if (bonus > 0) {
+                            total += bonus;
+                            descriptions.add(String.format("STORE_BONUS_TIER: R$%.2f", bonus));
+                        }
+                    }
                 }
                 default -> {}
             }
         }
-        return total;
+        return new BonusResult(total, descriptions);
     }
+
+    private record BonusResult(double total, List<String> descriptions) {}
 
     private RuleResult applyAbsence(MonthlyException a, double salesBase, double rate,
                                     int daysInMonth, LocalDate lastDay) {
