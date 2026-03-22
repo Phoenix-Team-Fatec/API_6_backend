@@ -3,17 +3,45 @@ name: api6-dev-container
 services:
   app:
     container_name: api6-java
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     working_dir: /workspaces/${localWorkspaceFolderBasename}
     ports:
-    - "8686:8080"
+      - "8686:8080"
     volumes:
       - ../..:/workspaces/${localWorkspaceFolderBasename}:cached
+    env_file:
+      - ../.env
     command: sleep infinity
+    depends_on:
+      mongo:
+        condition: service_healthy
     networks:
       - app-network
+
+  mongo:
+    image: mongo:8
+    container_name: api6-mongo
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: phoenix
+      MONGO_INITDB_ROOT_PASSWORD: phoenix
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  mongo-data:
 
 networks:
   app-network:
