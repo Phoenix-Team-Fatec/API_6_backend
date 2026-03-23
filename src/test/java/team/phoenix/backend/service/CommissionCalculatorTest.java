@@ -168,6 +168,20 @@ class CommissionCalculatorTest {
         assertThat(r.commissionBase()).isCloseTo(3701.61, within(D));
     }
 
+    @Test void afastamentoExactly15Days_routesToMenor15() {
+        // Absent Jul 1–15 = 15 inclusive days (raw diff 14 < 15) → MENOR_15
+        // worked=16; worked_comm=10000*0.025*(16/31)=129.03
+        // abs_sales_base=(10000/16)*15=9375; abs_comm=234.38 < 3500 → floor
+        // base = 129.03 + 3500 = 3629.03
+        var absence = MonthlyException.builder().type(ExceptionType.ABSENCE)
+            .matricula("M15").yearMonth("2025-07")
+            .startDate(LocalDate.of(2025,7,1)).endDate(LocalDate.of(2025,7,15)).build();
+        var r = calculator.calculate(hr("M15", 10, 35, 100, LocalDate.of(2020,1,1), null),
+            10000.0, 0.0, 0.025, List.of(absence), JULY);
+        assertThat(r.ruleApplied()).isEqualTo("AFASTAMENTO_MENOR_15");
+        assertThat(r.commissionBase()).isCloseTo(3629.03, within(D));
+    }
+
     @Test void storeBonusTier_appliedToManager() {
         var tier = MonthlyException.builder().type(ExceptionType.STORE_BONUS_TIER)
             .yearMonth("2025-12").appliesToManagers(true)

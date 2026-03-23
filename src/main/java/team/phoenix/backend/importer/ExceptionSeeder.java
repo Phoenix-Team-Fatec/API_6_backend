@@ -50,12 +50,12 @@ public class ExceptionSeeder {
     private List<MonthlyException> december2025() {
         var salesTiers = List.of(
             BonusTier.builder().minValue(40000.0).maxValue(50000.0).bonusAmount(3500.0).build(),
-            BonusTier.builder().minValue(50001.0).maxValue(60000.0).bonusAmount(4000.0).build(),
-            BonusTier.builder().minValue(60001.0).maxValue(null).bonusAmount(4500.0).build());
+            BonusTier.builder().minValue(50000.01).maxValue(60000.0).bonusAmount(4000.0).build(),
+            BonusTier.builder().minValue(60000.01).maxValue(null).bonusAmount(4500.0).build());
         var storeTiers = List.of(
             BonusTier.builder().minValue(120000.0).maxValue(140000.0).bonusAmount(5000.0).build(),
-            BonusTier.builder().minValue(140001.0).maxValue(160000.0).bonusAmount(6000.0).build(),
-            BonusTier.builder().minValue(160001.0).maxValue(null).bonusAmount(7000.0).build());
+            BonusTier.builder().minValue(140000.01).maxValue(160000.0).bonusAmount(6000.0).build(),
+            BonusTier.builder().minValue(160000.01).maxValue(null).bonusAmount(7000.0).build());
         return new ArrayList<>(List.of(
             absence("2025-12", "MATRIC-188", LocalDate.of(2025,12,3),  LocalDate.of(2025,12,10)),
             absence("2025-12", "MATRIC-5",   LocalDate.of(2025,11,10), LocalDate.of(2025,12,12)),
