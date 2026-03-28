@@ -8,12 +8,12 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "vscjava.vscode-java-pack"
+        "vscjava.vscode-java-pack",
+        "mongodb.mongodb-vscode",
+        "vasubasraj.flashpost"
       ]
-    },
-    "jetbrains": {
-      "backend": "IntelliJ IDEA"
     }
   },
+  "forwardPorts": [27017, 8080],
   "postCreateCommand": "bash -lc 'java -version && if [ -f mvnw ]; then chmod +x mvnw && ./mvnw -v; fi'"
 }

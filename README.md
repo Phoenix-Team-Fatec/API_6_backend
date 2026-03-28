@@ -1,5 +1,9 @@
 # API_6_backend
 
+0) .env
+
+Crie um .env com a variável MONGODB_URI
+
 1) Docker
 
 Ctrl + Shift + P
