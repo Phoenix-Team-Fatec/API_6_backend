@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDate;
 import java.util.List;
 
+// Excepção mensal que afeta cálculo de comissão (afastamento, férias, bônus, sobrescrita de taxa)
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 @Document(collection = "monthly_exceptions")
 public class MonthlyException {

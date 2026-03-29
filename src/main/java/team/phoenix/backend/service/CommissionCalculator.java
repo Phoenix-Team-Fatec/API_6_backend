@@ -8,12 +8,21 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
+// Componente que realiza cálculo complexo de comissões com regras de admissão, demissão, afastamento e férias
 @Component
 public class CommissionCalculator {
 
     private static final double ABSENCE_FLOOR = 3500.0;
     private static final int MANAGER_CARGO = 150;
 
+    // Calcula comissão para um funcionário em um mês
+    // Parâm hr: registro de RH do funcionário
+    // Parâm individualSales: total de vendas individuais
+    // Parâm storeSales: total de vendas da loja
+    // Parâm baseRate: taxa de comissão base
+    // Parâm exceptions: excepções do mês (afastamentos, férias, bônus, etc)
+    // Parâm month: mês do cálculo
+    // Retorna: CommissionResult com cálculo completo e explanação
     public CommissionResult calculate(HrRecord hr, double individualSales, double storeSales,
                                       double baseRate, List<MonthlyException> exceptions,
                                       YearMonth month) {
@@ -64,6 +73,11 @@ public class CommissionCalculator {
             rule.name(), rule.explanation());
     }
 
+    // Aplica sobrescrita de taxa de comissão baseado em excepções
+    // Parâm rate: taxa base
+    // Parâm hr: registro de RH
+    // Parâm exceptions: lista de excepções
+    // Retorna: taxa efetiva após aplicar sobrescritas (ABSOLUTA ou ADITIVA)
     private double applyRateOverride(double rate, HrRecord hr, List<MonthlyException> exceptions) {
         for (var ex : exceptions) {
             if (ex.getType() != ExceptionType.RATE_OVERRIDE) continue;
@@ -77,6 +91,12 @@ public class CommissionCalculator {
         return rate;
     }
 
+    // Aplica bônus (fixos e por faixa de venda) ao cálculo
+    // Parâm hr: registro de RH
+    // Parâm indSales: vendas individuais
+    // Parâm storeSales: vendas da loja
+    // Parâm exceptions: lista de excepções com bônus
+    // Retorna: BonusResult com total e descrição dos bônus
     private BonusResult applyBonuses(HrRecord hr, double indSales, double storeSales,
                                      List<MonthlyException> exceptions) {
         double total = 0.0;
@@ -117,6 +137,13 @@ public class CommissionCalculator {
 
     private record BonusResult(double total, List<String> descriptions) {}
 
+    // Aplica desconto de comissão por afastamento
+    // Parâm a: excepção de afastamento
+    // Parâm salesBase: base de vendas
+    // Parâm rate: taxa de comissão
+    // Parâm daysInMonth: dias no mês
+    // Parâm lastDay: último dia do mês
+    // Retorna: RuleResult com comissão após afastamento
     private RuleResult applyAbsence(MonthlyException a, double salesBase, double rate,
                                     int daysInMonth, LocalDate lastDay) {
         LocalDate end = a.getEndDate().isAfter(lastDay) ? lastDay : a.getEndDate();
@@ -148,6 +175,13 @@ public class CommissionCalculator {
         }
     }
 
+    // Aplica desconto de comissão por férias
+    // Parâm v: excepção de férias
+    // Parâm salesBase: base de vendas
+    // Parâm rate: taxa de comissão
+    // Parâm daysInMonth: dias no mês
+    // Parâm lastDay: último dia do mês
+    // Retorna: RuleResult com comissão após férias
     private RuleResult applyVacation(MonthlyException v, double salesBase, double rate,
                                      int daysInMonth, LocalDate lastDay) {
         LocalDate end = v.getEndDate().isAfter(lastDay) ? lastDay : v.getEndDate();
@@ -159,6 +193,10 @@ public class CommissionCalculator {
                 vacDays, salesBase, rate, worked, daysInMonth, base));
     }
 
+    // Encontra o valor de bônus﻿que corresponde à faixa de vendas
+    // Parâm tiers: lista de faixas de bônus
+    // Parâm value: valor das vendas
+    // Retorna: valor do bônus ou 0 se nenhuma faixa corresponder
     private double matchTier(List<BonusTier> tiers, double value) {
         if (tiers == null) return 0.0;
         return tiers.stream()

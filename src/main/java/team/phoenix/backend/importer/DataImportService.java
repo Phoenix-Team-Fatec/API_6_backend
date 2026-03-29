@@ -8,6 +8,7 @@ import java.io.*;
 import java.time.LocalDate;
 import java.util.*;
 
+// Serviço que lê dados de planilhas Excel e converte para objetos de domínio
 @Service
 public class DataImportService {
 
@@ -23,6 +24,8 @@ public class DataImportService {
     );
     static final String COMMISSION_FILE = "docs/dom-rock/BASE_COMMISS_FINAL.xlsx";
 
+    // Lê taxas de comissão do arquivo Excel
+    // Retorna: lista de CommissionRate
     public List<CommissionRate> readCommissionRates() throws IOException {
         List<CommissionRate> result = new ArrayList<>();
         try (Workbook wb = new XSSFWorkbook(new FileInputStream(COMMISSION_FILE))) {
@@ -39,6 +42,8 @@ public class DataImportService {
         return result;
     }
 
+    // Lê registros de RH (funcionários) de arquivos Excel
+    // Retorna: lista de HrRecord
     public List<HrRecord> readHrRecords() throws IOException {
         List<HrRecord> result = new ArrayList<>();
         for (String path : RH_FILES) {
@@ -61,6 +66,8 @@ public class DataImportService {
         return result;
     }
 
+    // Lê registros de vendas de arquivos Excel
+    // Retorna: lista de SalesRecord
     public List<SalesRecord> readSalesRecords() throws IOException {
         List<SalesRecord> result = new ArrayList<>();
         for (String path : VENDAS_FILES) {
@@ -81,6 +88,9 @@ public class DataImportService {
         return result;
     }
 
+    // Converte célula Excel em LocalDate
+    // Parâm cell: célula a converter
+    // Retorna: LocalDate ou null se célula vazia/inválida
     private LocalDate parseDate(Cell cell) {
         if (cell == null) return null;
         if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell))
@@ -88,11 +98,17 @@ public class DataImportService {
         return null;
     }
 
+    // Converte célula Excel em Integer
+    // Parâm cell: célula a converter
+    // Retorna: Integer ou null se célula vazia
     private Integer parseInt(Cell cell) {
         if (cell == null) return null;
         return (int) cell.getNumericCellValue();
     }
 
+    // Converte célula Excel em Double
+    // Parâm cell: célula a converter
+    // Retorna: Double ou null se célula vazia
     private Double parseDouble(Cell cell) {
         if (cell == null) return null;
         return cell.getNumericCellValue();

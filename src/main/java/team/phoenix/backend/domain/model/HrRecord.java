@@ -6,6 +6,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDate;
 
+// Registro de RH com dados de um funcionário em uma data de referência
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 @Document(collection = "hr_records")
 @CompoundIndex(name = "matricula_ref_idx", def = "{'matricula': 1, 'dataRef': 1}")

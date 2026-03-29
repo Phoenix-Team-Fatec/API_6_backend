@@ -12,6 +12,14 @@ Ctrl + Shift + P
 Dev Containers: Rebuild and Reopen in Container
 ```
 
+2) Importar dados
+
+É necessário ter a pasta docs na raiz do projeto
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=import
+```
+
 2) Executar testes
 
 ```bash

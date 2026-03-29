@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
+// Serviço que orquestra o cálculo de comissões buscando dados do BD
 @Service
 @RequiredArgsConstructor
 public class CommissionService {
@@ -18,6 +19,11 @@ public class CommissionService {
     private final MonthlyExceptionRepository exceptionRepo;
     private final CommissionCalculator calculator;
 
+    // Simula cálculo de comissão para um funcionário em um mês
+    // Parâm matricula: matrícula do funcionário (String)
+    // Parâm month: mês desejado (YearMonth)
+    // Retorna: CommissionResult com dados completos do cálculo
+    // Lança: RuntimeException se HR ou taxa não encontrados
     public CommissionResult simulate(String matricula, YearMonth month) {
         LocalDate ref = month.atDay(1);
 

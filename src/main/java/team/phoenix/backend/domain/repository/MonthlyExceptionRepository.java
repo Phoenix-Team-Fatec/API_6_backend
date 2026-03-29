@@ -4,6 +4,10 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import team.phoenix.backend.domain.model.MonthlyException;
 import java.util.List;
 
+// Repositório para acesso a excepções mensais no MongoDB
 public interface MonthlyExceptionRepository extends MongoRepository<MonthlyException, String> {
+    // Busca excepções por ano-mês
+    // Parâm yearMonth: período no formato yyyy-MM
+    // Retorna: lista de MonthlyException do mês
     List<MonthlyException> findByYearMonth(String yearMonth);
 }
