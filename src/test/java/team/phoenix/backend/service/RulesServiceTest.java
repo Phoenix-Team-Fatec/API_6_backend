@@ -17,7 +17,7 @@ class RulesServiceTest {
 
     @Mock CommissionRateRepository rateRepo;
     @Mock MonthlyExceptionRepository exceptionRepo;
-    @InjectMocks RulesService service;
+    @InjectMocks RulesServiceImpl service;
 
     @Test void listRates_noFilter_returnsAll() {
         var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).build();

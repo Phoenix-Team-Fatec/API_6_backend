@@ -7,8 +7,6 @@ services:
       context: .
       dockerfile: Dockerfile
     working_dir: /workspaces/${localWorkspaceFolderBasename}
-    ports:
-      - "8686:8080"
     volumes:
       - ../..:/workspaces/${localWorkspaceFolderBasename}:cached
     env_file:
@@ -24,8 +22,6 @@ services:
     image: mongo:8
     container_name: api6-mongo
     restart: unless-stopped
-    ports:
-      - "27018:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: phoenix
       MONGO_INITDB_ROOT_PASSWORD: phoenix

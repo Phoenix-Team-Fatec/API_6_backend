@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+// Taxa de comissão base por marca e cargo
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 @Document(collection = "commission_rates")
 @CompoundIndex(name = "marca_cargo_idx", def = "{'codMarca': 1, 'codCargo': 1}", unique = true)

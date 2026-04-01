@@ -5,9 +5,12 @@ import team.phoenix.backend.domain.model.*;
 import java.time.LocalDate;
 import java.util.*;
 
+// Componente que gera dados de excepções mensais (afastamentos, férias, bônus, sobrescritas de taxa)
 @Component
 public class ExceptionSeeder {
 
+    // Constrói lista completa de excepções para todos os meses
+    // Retorna: lista de MonthlyException
     public List<MonthlyException> buildAll() {
         List<MonthlyException> all = new ArrayList<>();
         all.addAll(july2025());
@@ -16,6 +19,8 @@ public class ExceptionSeeder {
         return all;
     }
 
+    // Constrói excepções para julho de 2025
+    // Retorna: lista de exceções do mês
     private List<MonthlyException> july2025() {
         return List.of(
             absence("2025-07", "MATRIC-58",  LocalDate.of(2025,7,10), LocalDate.of(2025,7,25)),
@@ -27,6 +32,8 @@ public class ExceptionSeeder {
         );
     }
 
+    // Constrói excepções para agosto de 2025
+    // Retorna: lista de excepções do mês
     private List<MonthlyException> august2025() {
         List<MonthlyException> list = new ArrayList<>(List.of(
             absence("2025-08", "MATRIC-113", LocalDate.of(2025,8,4),  LocalDate.of(2025,8,11)),
@@ -47,6 +54,8 @@ public class ExceptionSeeder {
         return list;
     }
 
+    // Constrói excepções para dezembro de 2025
+    // Retorna: lista de excepções do mês
     private List<MonthlyException> december2025() {
         var salesTiers = List.of(
             BonusTier.builder().minValue(40000.0).maxValue(50000.0).bonusAmount(3500.0).build(),
@@ -75,16 +84,33 @@ public class ExceptionSeeder {
         ));
     }
 
+    // Cria excepção de afastamento
+    // Parâm ym: ano-mês
+    // Parâm mat: matrícula do funcionário
+    // Parâm s: data de início
+    // Parâm e: data de fim
+    // Retorna: MonthlyException de afastamento
     private MonthlyException absence(String ym, String mat, LocalDate s, LocalDate e) {
         return MonthlyException.builder().yearMonth(ym).type(ExceptionType.ABSENCE)
             .matricula(mat).startDate(s).endDate(e).build();
     }
 
+    // Cria excepção de férias
+    // Parâm ym: ano-mês
+    // Parâm mat: matrícula do funcionário
+    // Parâm s: data de início
+    // Parâm e: data de fim
+    // Retorna: MonthlyException de férias
     private MonthlyException vacation(String ym, String mat, LocalDate s, LocalDate e) {
         return MonthlyException.builder().yearMonth(ym).type(ExceptionType.VACATION)
             .matricula(mat).startDate(s).endDate(e).build();
     }
 
+    // Cria excepção de sobrescrita de taxa (aditivaa)
+    // Parâm ym: ano-mês
+    // Parâm codMarca: código da marca
+    // Parâm delta: valor a acrescentar à taxa
+    // Retorna: MonthlyException de sobrescrita (ADITIVA)
     private MonthlyException rateAdditive(String ym, Integer codMarca, double delta) {
         return MonthlyException.builder().yearMonth(ym).type(ExceptionType.RATE_OVERRIDE)
             .codMarca(codMarca).overrideRate(delta).rateType(RateType.ADDITIVE)

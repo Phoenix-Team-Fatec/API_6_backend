@@ -22,7 +22,7 @@ class CommissionServiceTest {
     @Mock SalesRecordRepository salesRepo;
     @Mock MonthlyExceptionRepository exceptionRepo;
     @Mock CommissionCalculator calculator;
-    @InjectMocks CommissionService service;
+    @InjectMocks CommissionServiceImpl service;
 
     private static final YearMonth JULY = YearMonth.of(2025, 7);
 

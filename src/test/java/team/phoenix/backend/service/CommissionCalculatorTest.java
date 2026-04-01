@@ -14,7 +14,7 @@ class CommissionCalculatorTest {
     private static final YearMonth JULY = YearMonth.of(2025, 7); // 31 days
     private static final double D = 0.01;
 
-    @BeforeEach void setUp() { calculator = new CommissionCalculator(); }
+    @BeforeEach void setUp() { calculator = new CommissionCalculatorImpl(); }
 
     private HrRecord hr(String matricula, int codMarca, int codLoja, int codCargo,
                         LocalDate admiss, LocalDate demiss) {
