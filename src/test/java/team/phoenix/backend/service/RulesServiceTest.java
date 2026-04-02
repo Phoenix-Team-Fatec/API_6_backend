@@ -70,4 +70,11 @@ class RulesServiceTest {
         assertThat(service.listExceptions("2025-07", ExceptionType.ABSENCE, "MATRIC-58")).hasSize(1);
         verify(exceptionRepo).findByYearMonthAndTypeAndMatricula("2025-07", ExceptionType.ABSENCE, "MATRIC-58");
     }
+
+    @Test void listAllExceptions_returnsAll() {
+        var ex = MonthlyException.builder().yearMonth("2025-07").type(ExceptionType.ABSENCE).build();
+        when(exceptionRepo.findAll()).thenReturn(List.of(ex));
+        assertThat(service.listAllExceptions()).hasSize(1);
+        verify(exceptionRepo).findAll();
+    }
 }
