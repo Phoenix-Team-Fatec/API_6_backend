@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import team.phoenix.backend.service.CommissionService;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 
@@ -24,9 +25,9 @@ public class CommissionController {
     public ResponseEntity<?> simulate(
             @RequestParam String matricula,
             @RequestParam String month) {
-        YearMonth yearMonth;
+        LocalDate yearMonth;
         try {
-            yearMonth = YearMonth.parse(month);
+            yearMonth = YearMonth.parse(month).atDay(1);
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().body("Invalid month format. Use yyyy-MM");
         }

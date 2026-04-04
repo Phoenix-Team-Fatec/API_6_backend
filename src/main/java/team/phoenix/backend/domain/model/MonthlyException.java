@@ -12,7 +12,7 @@ import java.util.List;
 @Document(collection = "monthly_exceptions")
 public class MonthlyException {
     @Id private String id;
-    @Indexed private String yearMonth;
+    @Indexed private LocalDate yearMonth;
     private String matricula;
     private ExceptionType type;
     private LocalDate startDate;
