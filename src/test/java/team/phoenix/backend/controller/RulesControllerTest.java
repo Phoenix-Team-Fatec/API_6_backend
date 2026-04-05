@@ -8,6 +8,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,10 +85,15 @@ class RulesControllerTest {
 
         mockMvc.perform(post("/api/rules")
                 .contentType("application/json")
-                .content("{\"codMarca\":10,\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.025,\"data\":\"2026-03\"}"))
+                .content("{\"codMarca\":10,\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.025,\"data\":\"2026-03\",\"textoOriginal\":\"Texto manual\",\"explicacao\":\"Explicacao manual\"}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.codMarca").value(10))
             .andExpect(jsonPath("$.versao").value(1));
+
+        verify(rulesService).createRate(argThat(r ->
+            "Texto manual".equals(r.getTextoOriginal()) &&
+            "Explicacao manual".equals(r.getExplicacao())
+        ));
     }
 
     @Test void updateRate_withValidData_returnsOk() throws Exception {
@@ -114,6 +120,27 @@ class RulesControllerTest {
         mockMvc.perform(delete("/api/rules/123"))
             .andExpect(status().isNoContent());
         verify(rulesService).deactivateRate("123");
+    }
+
+    @Test void deactivateRate_returnsNoContent() throws Exception {
+        mockMvc.perform(post("/api/rules/123/deactivate"))
+            .andExpect(status().isNoContent());
+        verify(rulesService).deactivateRate("123");
+    }
+
+    @Test void activateRate_returnsNoContent() throws Exception {
+        mockMvc.perform(post("/api/rules/123/activate"))
+            .andExpect(status().isNoContent());
+        verify(rulesService).activateRate("123");
+    }
+
+    @Test void activateRate_deletedRule_returnsConflict() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalStateException("Regra removida não pode ser reativada"))
+            .when(rulesService).activateRate("123");
+
+        mockMvc.perform(post("/api/rules/123/activate"))
+            .andExpect(status().isConflict())
+            .andExpect(content().string("Regra removida não pode ser reativada"));
     }
 
     @Test void getRate_found_returnsOk() throws Exception {

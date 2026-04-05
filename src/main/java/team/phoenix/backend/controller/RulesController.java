@@ -39,6 +39,8 @@ public class RulesController {
                 .descriCargo(req.descriCargo())
                 .pctComiss(req.pctComiss())
                 .data(req.getDataAsLocalDate())
+                .textoOriginal(req.textoOriginal())
+                .explicacao(req.explicacao())
                 .build();
 
             var created = rulesService.createRate(rate);
@@ -59,6 +61,8 @@ public class RulesController {
                 .descriCargo(req.descriCargo())
                 .pctComiss(req.pctComiss())
                 .data(req.getDataAsLocalDate())
+                .textoOriginal(req.textoOriginal())
+                .explicacao(req.explicacao())
                 .build();
 
             var rate = rulesService.updateRate(id, updated);
@@ -75,8 +79,36 @@ public class RulesController {
         try {
             rulesService.deactivateRate(id);
             return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Erro ao deletar regra: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/activate")
+    public ResponseEntity<?> activateRate(@PathVariable String id) {
+        try {
+            rulesService.activateRate(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao ativar regra: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/deactivate")
+    public ResponseEntity<?> deactivateRate(@PathVariable String id) {
+        try {
+            rulesService.deactivateRate(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao desativar regra: " + e.getMessage());
         }
     }
 

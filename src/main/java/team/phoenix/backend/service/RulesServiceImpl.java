@@ -128,7 +128,25 @@ public class RulesServiceImpl implements RulesService {
             r.setIsVigente(false);
             r.setDeletedAt(LocalDateTime.now());
             rateRepo.save(r);
+        } else {
+            throw new IllegalArgumentException("Regra não encontrada: " + id);
         }
+    }
+
+    @Override
+    public void activateRate(String id) {
+        Optional<CommissionRate> rate = rateRepo.findById(id);
+        if (rate.isEmpty()) {
+            throw new IllegalArgumentException("Regra não encontrada: " + id);
+        }
+
+        CommissionRate r = rate.get();
+        if (r.getDeletedAt() != null) {
+            throw new IllegalStateException("Regra removida não pode ser reativada");
+        }
+
+        r.setIsVigente(true);
+        rateRepo.save(r);
     }
 
     @Override

@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import team.phoenix.backend.domain.model.*;
 import team.phoenix.backend.domain.repository.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
@@ -70,5 +71,47 @@ class RulesServiceTest {
         when(exceptionRepo.findByYearMonthAndTypeAndMatricula(LocalDate.of(2025,7,1), ExceptionType.ABSENCE, "MATRIC-58")).thenReturn(List.of(ex));
         assertThat(service.listExceptions(LocalDate.of(2025,7,1), ExceptionType.ABSENCE, "MATRIC-58")).hasSize(1);
         verify(exceptionRepo).findByYearMonthAndTypeAndMatricula(LocalDate.of(2025,7,1), ExceptionType.ABSENCE, "MATRIC-58");
+    }
+
+    @Test void activateRate_whenNotDeleted_reattivatesRule() {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .isVigente(false)
+            .deletedAt(null)
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+
+        service.activateRate("123");
+
+        assertThat(rate.getIsVigente()).isTrue();
+        verify(rateRepo).save(rate);
+    }
+
+    @Test void activateRate_whenDeleted_throwsIllegalStateException() {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .isVigente(false)
+            .deletedAt(LocalDateTime.now())
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+
+        assertThatThrownBy(() -> service.activateRate("123"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Regra removida não pode ser reativada");
+        verify(rateRepo, never()).save(any());
+    }
+
+    @Test void deactivateRate_whenFound_marksAsDeletedAndInactive() {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .isVigente(true)
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+
+        service.deactivateRate("123");
+
+        assertThat(rate.getIsVigente()).isFalse();
+        assertThat(rate.getDeletedAt()).isNotNull();
+        verify(rateRepo).save(rate);
     }
 }

@@ -50,6 +50,12 @@ public interface RulesService {
     void deactivateRate(String id);
 
     /**
+     * Ativa uma regra existente, desde que não tenha sido removida (soft delete)
+     * @param id ID da regra
+     */
+    void activateRate(String id);
+
+    /**
      * Obtém uma regra pelo ID
      * @param id ID da regra
      * @return opcional contendo a regra

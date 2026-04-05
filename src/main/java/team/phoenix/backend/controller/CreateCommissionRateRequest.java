@@ -10,7 +10,9 @@ public record CreateCommissionRateRequest(
     Integer codCargo,
     String descriCargo,
     Double pctComiss,
-    String data                           // opcional, formato yyyy-MM; se null, usa hoje
+    String data,                          // opcional, formato yyyy-MM; se null, usa hoje
+    String textoOriginal,                 // opcional; se null/em branco, backend gera
+    String explicacao                     // opcional; se null/em branco, backend gera
 ) {
     public LocalDate getDataAsLocalDate() {
         if (data == null || data.isBlank()) {
