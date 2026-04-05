@@ -15,9 +15,10 @@ public interface RulesService {
      * Lista as taxas de comissão com filtros opcionais (apenas vigentes por padrão)
      * @param codMarca código da marca (opcional)
      * @param codCargo código do cargo (opcional)
+        * @param isVigente filtro opcional de vigência; null mantém comportamento padrão
      * @return lista de taxas de comissão vigentes
      */
-    List<CommissionRate> listRates(Integer codMarca, Integer codCargo);
+        List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente);
 
     /**
      * Lista as taxas de comissão incluindo versões anteriores

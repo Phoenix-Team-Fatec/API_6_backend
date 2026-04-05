@@ -24,28 +24,44 @@ class RulesServiceTest {
     @Test void listRates_noFilter_returnsAll() {
         var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
         when(rateRepo.findAll()).thenReturn(List.of(rate));
-        assertThat(service.listRates(null, null)).hasSize(1);
+        assertThat(service.listRates(null, null, null)).hasSize(1);
     }
 
     @Test void listRates_filterByCodMarca_returnsFiltered() {
         var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
         when(rateRepo.findByCodMarca(10)).thenReturn(List.of(rate));
-        assertThat(service.listRates(10, null)).hasSize(1);
+        assertThat(service.listRates(10, null, null)).hasSize(1);
         verify(rateRepo).findByCodMarca(10);
     }
 
     @Test void listRates_filterByCodCargo_returnsFiltered() {
         var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
         when(rateRepo.findByCodCargo(100)).thenReturn(List.of(rate));
-        assertThat(service.listRates(null, 100)).hasSize(1);
+        assertThat(service.listRates(null, 100, null)).hasSize(1);
         verify(rateRepo).findByCodCargo(100);
     }
 
     @Test void listRates_filterByBoth_returnsFiltered() {
         var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
         when(rateRepo.findByCodMarcaAndCodCargo(10, 100)).thenReturn(Optional.of(rate));
-        assertThat(service.listRates(10, 100)).hasSize(1);
+        assertThat(service.listRates(10, 100, null)).hasSize(1);
         verify(rateRepo).findByCodMarcaAndCodCargo(10, 100);
+    }
+
+    @Test void listRates_withIsVigenteTrue_returnsOnlyActive() {
+        var active = CommissionRate.builder().isVigente(true).build();
+        var inactive = CommissionRate.builder().isVigente(false).build();
+        when(rateRepo.findAll()).thenReturn(List.of(active, inactive));
+
+        assertThat(service.listRates(null, null, true)).containsExactly(active);
+    }
+
+    @Test void listRates_withIsVigenteFalse_returnsOnlyInactive() {
+        var active = CommissionRate.builder().isVigente(true).build();
+        var inactive = CommissionRate.builder().isVigente(false).build();
+        when(rateRepo.findAll()).thenReturn(List.of(active, inactive));
+
+        assertThat(service.listRates(null, null, false)).containsExactly(inactive);
     }
 
     @Test void listExceptions_byMonth_returnsAll() {

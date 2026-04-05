@@ -23,8 +23,8 @@ public class RulesServiceImpl implements RulesService {
     private final MonthlyExceptionRepository exceptionRepo;
 
     @Override
-    public List<CommissionRate> listRates(Integer codMarca, Integer codCargo) {
-        return listRatesWithOptions(codMarca, codCargo, false);
+    public List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente) {
+        return listRatesWithOptions(codMarca, codCargo, isVigente);
     }
 
     @Override
@@ -50,6 +50,31 @@ public class RulesServiceImpl implements RulesService {
         }
 
         return rates;
+    }
+
+    private List<CommissionRate> listRatesWithOptions(Integer codMarca, Integer codCargo, Boolean isVigente) {
+        List<CommissionRate> rates;
+
+        if (codMarca != null && codCargo != null) {
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
+                .map(List::of).orElse(List.of());
+        } else if (codMarca != null) {
+            rates = rateRepo.findByCodMarca(codMarca);
+        } else if (codCargo != null) {
+            rates = rateRepo.findByCodCargo(codCargo);
+        } else {
+            rates = rateRepo.findAll();
+        }
+
+        if (isVigente == null) {
+            return rates.stream()
+                .filter(r -> Boolean.TRUE.equals(r.getIsVigente()) && r.getDeletedAt() == null)
+                .toList();
+        }
+
+        return rates.stream()
+            .filter(r -> Boolean.TRUE.equals(r.getIsVigente()) == isVigente)
+            .toList();
     }
 
     @Override

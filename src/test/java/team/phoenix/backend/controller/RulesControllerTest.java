@@ -44,7 +44,7 @@ class RulesControllerTest {
             .isVigente(true)
             .createdAt(LocalDateTime.now())
             .build();
-        when(rulesService.listRates(null, null)).thenReturn(List.of(rate));
+        when(rulesService.listRates(null, null, null)).thenReturn(List.of(rate));
 
         mockMvc.perform(get("/api/rules/commission-rates"))
             .andExpect(status().isOk())
@@ -61,11 +61,45 @@ class RulesControllerTest {
             .isVigente(true)
             .createdAt(LocalDateTime.now())
             .build();
-        when(rulesService.listRates(10, null)).thenReturn(List.of(rate));
+        when(rulesService.listRates(10, null, null)).thenReturn(List.of(rate));
 
         mockMvc.perform(get("/api/rules/commission-rates").param("codMarca", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].codMarca").value(10));
+    }
+
+    @Test void listRates_withIsVigenteTrue_returnsOnlyActive() throws Exception {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .codMarca(10).descrMarca("PRETO")
+            .codCargo(100).descriCargo("VENDEDOR LOJA")
+            .pctComiss(0.025)
+            .versao(1)
+            .isVigente(true)
+            .createdAt(LocalDateTime.now())
+            .build();
+        when(rulesService.listRates(null, null, true)).thenReturn(List.of(rate));
+
+        mockMvc.perform(get("/api/rules/commission-rates").param("isVigente", "true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].isVigente").value(true));
+    }
+
+    @Test void listRates_withIsVigenteFalse_returnsOnlyInactive() throws Exception {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .codMarca(10).descrMarca("PRETO")
+            .codCargo(100).descriCargo("VENDEDOR LOJA")
+            .pctComiss(0.025)
+            .versao(1)
+            .isVigente(false)
+            .createdAt(LocalDateTime.now())
+            .build();
+        when(rulesService.listRates(null, null, false)).thenReturn(List.of(rate));
+
+        mockMvc.perform(get("/api/rules/commission-rates").param("isVigente", "false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].isVigente").value(false));
     }
 
     @Test void createRate_withValidData_returnsCreated() throws Exception {
