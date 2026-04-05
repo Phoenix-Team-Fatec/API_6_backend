@@ -224,6 +224,12 @@ class RulesControllerTest {
             .andExpect(content().string("Regra não foi deletada"));
     }
 
+    @Test void rollbackRate_returnsNoContent() throws Exception {
+        mockMvc.perform(post("/api/rules/123/rollback"))
+            .andExpect(status().isNoContent());
+        verify(rulesService).rollbackRate("123");
+    }
+
     @Test void getRate_found_returnsOk() throws Exception {
         var rate = CommissionRate.builder()
             .id("123")

@@ -69,6 +69,13 @@ public interface RulesService {
     void restoreRate(String id);
 
     /**
+     * Reverte a regra para a versão anterior (ex.: 5 para 4)
+     * Se não houver histórico anterior, não realiza alteração.
+     * @param id ID da regra
+     */
+    void rollbackRate(String id);
+
+    /**
      * Obtém uma regra pelo ID
      * @param id ID da regra
      * @return opcional contendo a regra

@@ -240,6 +240,39 @@ public class RulesServiceImpl implements RulesService {
     }
 
     @Override
+    public void rollbackRate(String id) {
+        Optional<CommissionRate> rate = rateRepo.findById(id);
+        if (rate.isEmpty()) {
+            throw new IllegalArgumentException("Regra não encontrada: " + id);
+        }
+
+        CommissionRate current = rate.get();
+        if (current.getVersoesAnteriores() == null || current.getVersoesAnteriores().isEmpty() ||
+            (current.getVersao() != null && current.getVersao() <= 1)) {
+            return;
+        }
+
+        int lastIndex = current.getVersoesAnteriores().size() - 1;
+        CommissionRate.CommissionRateVersion previous = current.getVersoesAnteriores().remove(lastIndex);
+
+        current.setCodMarca(previous.getCodMarca());
+        current.setDescrMarca(previous.getDescrMarca());
+        current.setCodCargo(previous.getCodCargo());
+        current.setDescriCargo(previous.getDescriCargo());
+        current.setPctComiss(previous.getPctComiss());
+        current.setData(previous.getData());
+        current.setTextoOriginal(previous.getTextoOriginal());
+        current.setExplicacao(previous.getExplicacao());
+        current.setVersao(previous.getVersao());
+        current.setIsVigente(previous.getIsVigente());
+        current.setCreatedAt(previous.getCreatedAt());
+        current.setUpdatedAt(previous.getUpdatedAt());
+        current.setDeletedAt(previous.getDeletedAt());
+
+        rateRepo.save(current);
+    }
+
+    @Override
     public Optional<CommissionRate> getRateById(String id) {
         return rateRepo.findById(id);
     }

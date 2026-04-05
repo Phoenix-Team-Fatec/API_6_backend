@@ -248,4 +248,69 @@ class RulesServiceTest {
             .hasMessage("Regra não foi deletada");
         verify(rateRepo, never()).save(any());
     }
+
+    @Test void rollbackRate_whenHasPreviousVersion_restoresPreviousAndPopsHistory() {
+        var previous = CommissionRate.CommissionRateVersion.builder()
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR LOJA")
+            .pctComiss(0.025)
+            .data(LocalDate.of(2026, 3, 1))
+            .versao(4)
+            .textoOriginal("texto v4")
+            .explicacao("exp v4")
+            .createdAt(LocalDateTime.of(2026, 4, 1, 10, 0))
+            .updatedAt(LocalDateTime.of(2026, 4, 2, 10, 0))
+            .isVigente(true)
+            .deletedAt(null)
+            .build();
+
+        var current = CommissionRate.builder()
+            .id("123")
+            .codMarca(20)
+            .descrMarca("CINZA")
+            .codCargo(150)
+            .descriCargo("GERENTE")
+            .pctComiss(0.04)
+            .data(LocalDate.of(2026, 4, 1))
+            .versao(5)
+            .textoOriginal("texto v5")
+            .explicacao("exp v5")
+            .createdAt(LocalDateTime.of(2026, 4, 3, 10, 0))
+            .updatedAt(LocalDateTime.of(2026, 4, 4, 10, 0))
+            .isVigente(false)
+            .deletedAt(null)
+            .versoesAnteriores(new java.util.ArrayList<>(List.of(previous)))
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(current));
+
+        service.rollbackRate("123");
+
+        assertThat(current.getVersao()).isEqualTo(4);
+        assertThat(current.getCodMarca()).isEqualTo(10);
+        assertThat(current.getDescrMarca()).isEqualTo("PRETO");
+        assertThat(current.getCodCargo()).isEqualTo(100);
+        assertThat(current.getDescriCargo()).isEqualTo("VENDEDOR LOJA");
+        assertThat(current.getPctComiss()).isEqualTo(0.025);
+        assertThat(current.getData()).isEqualTo(LocalDate.of(2026, 3, 1));
+        assertThat(current.getTextoOriginal()).isEqualTo("texto v4");
+        assertThat(current.getExplicacao()).isEqualTo("exp v4");
+        assertThat(current.getIsVigente()).isTrue();
+        assertThat(current.getVersoesAnteriores()).isEmpty();
+        verify(rateRepo).save(current);
+    }
+
+    @Test void rollbackRate_whenNoPreviousVersion_isNoOp() {
+        var current = CommissionRate.builder()
+            .id("123")
+            .versao(1)
+            .versoesAnteriores(new java.util.ArrayList<>())
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(current));
+
+        service.rollbackRate("123");
+
+        verify(rateRepo, never()).save(any());
+    }
 }

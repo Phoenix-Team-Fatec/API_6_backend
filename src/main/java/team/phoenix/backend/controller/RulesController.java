@@ -127,6 +127,18 @@ public class RulesController {
         }
     }
 
+    @PostMapping("/{id}/rollback")
+    public ResponseEntity<?> rollbackRate(@PathVariable String id) {
+        try {
+            rulesService.rollbackRate(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao reverter regra: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getRate(@PathVariable String id) {
         var rate = rulesService.getRateById(id);
