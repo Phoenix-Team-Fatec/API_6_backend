@@ -114,4 +114,33 @@ class RulesServiceTest {
         assertThat(rate.getDeletedAt()).isNotNull();
         verify(rateRepo).save(rate);
     }
+
+    @Test void restoreRate_whenDeleted_recoversWithoutActivating() {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .isVigente(false)
+            .deletedAt(LocalDateTime.now())
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+
+        service.restoreRate("123");
+
+        assertThat(rate.getDeletedAt()).isNull();
+        assertThat(rate.getIsVigente()).isFalse();
+        verify(rateRepo).save(rate);
+    }
+
+    @Test void restoreRate_whenNotDeleted_throwsIllegalStateException() {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .isVigente(true)
+            .deletedAt(null)
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+
+        assertThatThrownBy(() -> service.restoreRate("123"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Regra não foi deletada");
+        verify(rateRepo, never()).save(any());
+    }
 }

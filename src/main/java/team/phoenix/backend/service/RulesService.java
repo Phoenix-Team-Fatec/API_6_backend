@@ -56,6 +56,12 @@ public interface RulesService {
     void activateRate(String id);
 
     /**
+     * Restaura uma regra removida (soft delete), mantendo-a inativa
+     * @param id ID da regra
+     */
+    void restoreRate(String id);
+
+    /**
      * Obtém uma regra pelo ID
      * @param id ID da regra
      * @return opcional contendo a regra

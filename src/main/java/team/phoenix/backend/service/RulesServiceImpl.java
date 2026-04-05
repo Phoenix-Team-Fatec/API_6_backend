@@ -150,6 +150,22 @@ public class RulesServiceImpl implements RulesService {
     }
 
     @Override
+    public void restoreRate(String id) {
+        Optional<CommissionRate> rate = rateRepo.findById(id);
+        if (rate.isEmpty()) {
+            throw new IllegalArgumentException("Regra não encontrada: " + id);
+        }
+
+        CommissionRate r = rate.get();
+        if (r.getDeletedAt() == null) {
+            throw new IllegalStateException("Regra não foi deletada");
+        }
+
+        r.setDeletedAt(null);
+        rateRepo.save(r);
+    }
+
+    @Override
     public Optional<CommissionRate> getRateById(String id) {
         return rateRepo.findById(id);
     }

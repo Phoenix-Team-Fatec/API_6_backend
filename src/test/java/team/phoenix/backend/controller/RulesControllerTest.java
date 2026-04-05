@@ -143,6 +143,21 @@ class RulesControllerTest {
             .andExpect(content().string("Regra removida não pode ser reativada"));
     }
 
+    @Test void restoreRate_returnsNoContent() throws Exception {
+        mockMvc.perform(post("/api/rules/123/restore"))
+            .andExpect(status().isNoContent());
+        verify(rulesService).restoreRate("123");
+    }
+
+    @Test void restoreRate_notDeletedRule_returnsConflict() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalStateException("Regra não foi deletada"))
+            .when(rulesService).restoreRate("123");
+
+        mockMvc.perform(post("/api/rules/123/restore"))
+            .andExpect(status().isConflict())
+            .andExpect(content().string("Regra não foi deletada"));
+    }
+
     @Test void getRate_found_returnsOk() throws Exception {
         var rate = CommissionRate.builder()
             .id("123")

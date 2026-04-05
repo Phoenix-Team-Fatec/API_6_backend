@@ -112,6 +112,20 @@ public class RulesController {
         }
     }
 
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<?> restoreRate(@PathVariable String id) {
+        try {
+            rulesService.restoreRate(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao restaurar regra: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getRate(@PathVariable String id) {
         var rate = rulesService.getRateById(id);
