@@ -113,6 +113,40 @@ class RulesControllerTest {
             .andExpect(jsonPath("$[0].isVigente").value(false));
     }
 
+    @Test void listTrashedRates_noFilter_returnsOk() throws Exception {
+        var trashed = CommissionRate.builder()
+            .id("999")
+            .codMarca(20).descrMarca("CINZA")
+            .codCargo(150).descriCargo("GERENTE")
+            .pctComiss(0.01)
+            .isVigente(false)
+            .deletedAt(LocalDateTime.now())
+            .build();
+        when(rulesService.listTrashedRates(null, null, null)).thenReturn(List.of(trashed));
+
+        mockMvc.perform(get("/api/rules/commission-rates/trash"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value("999"));
+    }
+
+    @Test void listTrashedRates_withFilter_returnsOk() throws Exception {
+        var trashed = CommissionRate.builder()
+            .id("999")
+            .codMarca(20).descrMarca("CINZA")
+            .codCargo(150).descriCargo("GERENTE")
+            .pctComiss(0.01)
+            .isVigente(false)
+            .deletedAt(LocalDateTime.now())
+            .build();
+        when(rulesService.listTrashedRates(20, null, false)).thenReturn(List.of(trashed));
+
+        mockMvc.perform(get("/api/rules/commission-rates/trash")
+                .param("codMarca", "20")
+                .param("isVigente", "false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].codMarca").value(20));
+    }
+
     @Test void createRate_withValidData_returnsCreated() throws Exception {
         var rate = CommissionRate.builder()
             .id("123")

@@ -30,6 +30,16 @@ public class RulesController {
         return ResponseEntity.ok(rates);
     }
 
+    @GetMapping("/commission-rates/trash")
+    public ResponseEntity<List<CommissionRateResponse>> listTrashedRates(
+            @RequestParam(required = false) Integer codMarca,
+            @RequestParam(required = false) Integer codCargo,
+            @RequestParam(required = false) Boolean isVigente) {
+        var rates = rulesService.listTrashedRates(codMarca, codCargo, isVigente)
+            .stream().map(CommissionRateResponse::from).toList();
+        return ResponseEntity.ok(rates);
+    }
+
     @PostMapping
     public ResponseEntity<?> createRate(@RequestBody CreateCommissionRateRequest req) {
         try {

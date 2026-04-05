@@ -81,6 +81,22 @@ class RulesServiceTest {
         assertThat(service.listRates(null, null, false)).containsExactly(inactive);
     }
 
+    @Test void listTrashedRates_noFilter_returnsOnlyDeleted() {
+        var deletedA = CommissionRate.builder().isVigente(false).deletedAt(LocalDateTime.now()).build();
+        var active = CommissionRate.builder().isVigente(true).deletedAt(null).build();
+        when(rateRepo.findAll()).thenReturn(List.of(deletedA, active));
+
+        assertThat(service.listTrashedRates(null, null, null)).containsExactly(deletedA);
+    }
+
+    @Test void listTrashedRates_withIsVigenteFalse_filtersDeletedInactive() {
+        var deletedInactive = CommissionRate.builder().isVigente(false).deletedAt(LocalDateTime.now()).build();
+        var deletedActive = CommissionRate.builder().isVigente(true).deletedAt(LocalDateTime.now()).build();
+        when(rateRepo.findAll()).thenReturn(List.of(deletedInactive, deletedActive));
+
+        assertThat(service.listTrashedRates(null, null, false)).containsExactly(deletedInactive);
+    }
+
     @Test void listExceptions_byMonth_returnsAll() {
         var ex = MonthlyException.builder().yearMonth(LocalDate.of(2025,7,1)).type(ExceptionType.ABSENCE).build();
         when(exceptionRepo.findByYearMonth(LocalDate.of(2025,7,1))).thenReturn(List.of(ex));

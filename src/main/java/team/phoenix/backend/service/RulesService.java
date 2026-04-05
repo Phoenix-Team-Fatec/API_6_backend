@@ -21,6 +21,15 @@ public interface RulesService {
      List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente);
 
     /**
+     * Lista as taxas de comissão na lixeira (somente deletadas)
+     * @param codMarca código da marca (opcional)
+     * @param codCargo código do cargo (opcional)
+     * @param isVigente filtro opcional de vigência
+     * @return lista de taxas de comissão deletadas
+     */
+    List<CommissionRate> listTrashedRates(Integer codMarca, Integer codCargo, Boolean isVigente);
+
+    /**
      * Lista as taxas de comissão incluindo versões anteriores
      * @param codMarca código da marca (opcional)
      * @param codCargo código do cargo (opcional)

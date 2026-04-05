@@ -28,6 +28,34 @@ public class RulesServiceImpl implements RulesService {
     }
 
     @Override
+    public List<CommissionRate> listTrashedRates(Integer codMarca, Integer codCargo, Boolean isVigente) {
+        List<CommissionRate> rates;
+
+        if (codMarca != null && codCargo != null) {
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
+                .map(List::of).orElse(List.of());
+        } else if (codMarca != null) {
+            rates = rateRepo.findByCodMarca(codMarca);
+        } else if (codCargo != null) {
+            rates = rateRepo.findByCodCargo(codCargo);
+        } else {
+            rates = rateRepo.findAll();
+        }
+
+        var deletedRates = rates.stream()
+            .filter(r -> r.getDeletedAt() != null)
+            .toList();
+
+        if (isVigente == null) {
+            return deletedRates;
+        }
+
+        return deletedRates.stream()
+            .filter(r -> Boolean.TRUE.equals(r.getIsVigente()) == isVigente)
+            .toList();
+    }
+
+    @Override
     public List<CommissionRate> listRatesWithOptions(Integer codMarca, Integer codCargo, boolean includeInactive) {
         List<CommissionRate> rates;
 
