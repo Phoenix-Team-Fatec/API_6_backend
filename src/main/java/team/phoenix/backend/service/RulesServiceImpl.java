@@ -66,13 +66,15 @@ public class RulesServiceImpl implements RulesService {
             rates = rateRepo.findAll();
         }
 
+        var notDeletedRates = rates.stream()
+            .filter(r -> r.getDeletedAt() == null)
+            .toList();
+
         if (isVigente == null) {
-            return rates.stream()
-                .filter(r -> Boolean.TRUE.equals(r.getIsVigente()) && r.getDeletedAt() == null)
-                .toList();
+            return notDeletedRates;
         }
 
-        return rates.stream()
+        return notDeletedRates.stream()
             .filter(r -> Boolean.TRUE.equals(r.getIsVigente()) == isVigente)
             .toList();
     }
@@ -147,6 +149,18 @@ public class RulesServiceImpl implements RulesService {
 
     @Override
     public void deactivateRate(String id) {
+        Optional<CommissionRate> rate = rateRepo.findById(id);
+        if (rate.isPresent()) {
+            CommissionRate r = rate.get();
+            r.setIsVigente(false);
+            rateRepo.save(r);
+        } else {
+            throw new IllegalArgumentException("Regra não encontrada: " + id);
+        }
+    }
+
+    @Override
+    public void softDeleteRate(String id) {
         Optional<CommissionRate> rate = rateRepo.findById(id);
         if (rate.isPresent()) {
             CommissionRate r = rate.get();

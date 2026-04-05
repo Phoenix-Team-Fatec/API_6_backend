@@ -21,10 +21,13 @@ class RulesServiceTest {
     @Mock MonthlyExceptionRepository exceptionRepo;
     @InjectMocks RulesServiceImpl service;
 
-    @Test void listRates_noFilter_returnsAll() {
-        var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
-        when(rateRepo.findAll()).thenReturn(List.of(rate));
-        assertThat(service.listRates(null, null, null)).hasSize(1);
+    @Test void listRates_noFilter_returnsActiveAndInactiveButNotDeleted() {
+        var active = CommissionRate.builder().isVigente(true).deletedAt(null).build();
+        var inactive = CommissionRate.builder().isVigente(false).deletedAt(null).build();
+        var deletedInactive = CommissionRate.builder().isVigente(false).deletedAt(LocalDateTime.now()).build();
+        when(rateRepo.findAll()).thenReturn(List.of(active, inactive, deletedInactive));
+
+        assertThat(service.listRates(null, null, null)).containsExactly(active, inactive);
     }
 
     @Test void listRates_filterByCodMarca_returnsFiltered() {
@@ -60,6 +63,20 @@ class RulesServiceTest {
         var active = CommissionRate.builder().isVigente(true).build();
         var inactive = CommissionRate.builder().isVigente(false).build();
         when(rateRepo.findAll()).thenReturn(List.of(active, inactive));
+
+        assertThat(service.listRates(null, null, false)).containsExactly(inactive);
+    }
+
+    @Test void listRates_withIsVigenteFalse_excludesSoftDeleted() {
+        var inactive = CommissionRate.builder()
+            .isVigente(false)
+            .deletedAt(null)
+            .build();
+        var deletedInactive = CommissionRate.builder()
+            .isVigente(false)
+            .deletedAt(LocalDateTime.now())
+            .build();
+        when(rateRepo.findAll()).thenReturn(List.of(inactive, deletedInactive));
 
         assertThat(service.listRates(null, null, false)).containsExactly(inactive);
     }
@@ -125,6 +142,20 @@ class RulesServiceTest {
         when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
 
         service.deactivateRate("123");
+
+        assertThat(rate.getIsVigente()).isFalse();
+        assertThat(rate.getDeletedAt()).isNull();
+        verify(rateRepo).save(rate);
+    }
+
+    @Test void softDeleteRate_whenFound_marksAsDeletedAndInactive() {
+        var rate = CommissionRate.builder()
+            .id("123")
+            .isVigente(true)
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+
+        service.softDeleteRate("123");
 
         assertThat(rate.getIsVigente()).isFalse();
         assertThat(rate.getDeletedAt()).isNotNull();

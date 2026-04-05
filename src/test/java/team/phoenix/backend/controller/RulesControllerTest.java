@@ -35,7 +35,7 @@ class RulesControllerTest {
     @MockitoBean RulesService rulesService;
 
     @Test void listRates_noFilter_returnsOk() throws Exception {
-        var rate = CommissionRate.builder()
+        var activeRate = CommissionRate.builder()
             .id("123")
             .codMarca(10).descrMarca("PRETO")
             .codCargo(100).descriCargo("VENDEDOR LOJA")
@@ -44,13 +44,24 @@ class RulesControllerTest {
             .isVigente(true)
             .createdAt(LocalDateTime.now())
             .build();
-        when(rulesService.listRates(null, null, null)).thenReturn(List.of(rate));
+        var inactiveRate = CommissionRate.builder()
+            .id("124")
+            .codMarca(20).descrMarca("CINZA")
+            .codCargo(150).descriCargo("GERENTE QUIOSQUE")
+            .pctComiss(0.0125)
+            .versao(1)
+            .isVigente(false)
+            .createdAt(LocalDateTime.now())
+            .build();
+        when(rulesService.listRates(null, null, null)).thenReturn(List.of(activeRate, inactiveRate));
 
         mockMvc.perform(get("/api/rules/commission-rates"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].codMarca").value(10))
             .andExpect(jsonPath("$[0].pctComiss").value(0.025))
-            .andExpect(jsonPath("$[0].isVigente").value(true));
+            .andExpect(jsonPath("$[0].isVigente").value(true))
+            .andExpect(jsonPath("$[1].codMarca").value(20))
+            .andExpect(jsonPath("$[1].isVigente").value(false));
     }
 
     @Test void listRates_withCodMarcaFilter_returnsOk() throws Exception {
@@ -153,7 +164,7 @@ class RulesControllerTest {
     @Test void deleteRate_returnsNoContent() throws Exception {
         mockMvc.perform(delete("/api/rules/123"))
             .andExpect(status().isNoContent());
-        verify(rulesService).deactivateRate("123");
+        verify(rulesService).softDeleteRate("123");
     }
 
     @Test void deactivateRate_returnsNoContent() throws Exception {

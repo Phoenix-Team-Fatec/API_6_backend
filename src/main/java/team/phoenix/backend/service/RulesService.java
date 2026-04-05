@@ -11,14 +11,14 @@ import team.phoenix.backend.domain.model.MonthlyException;
 // Interface para gerenciamento de taxas de comissão e exceções mensais
 public interface RulesService {
 
-    /**
-     * Lista as taxas de comissão com filtros opcionais (apenas vigentes por padrão)
-     * @param codMarca código da marca (opcional)
-     * @param codCargo código do cargo (opcional)
-        * @param isVigente filtro opcional de vigência; null mantém comportamento padrão
-     * @return lista de taxas de comissão vigentes
-     */
-        List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente);
+     /**
+      * Lista as taxas de comissão com filtros opcionais (somente não deletadas)
+      * @param codMarca código da marca (opcional)
+      * @param codCargo código do cargo (opcional)
+      * @param isVigente filtro opcional de vigência; null retorna ativas e inativas
+      * @return lista de taxas de comissão não deletadas
+      */
+     List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente);
 
     /**
      * Lista as taxas de comissão incluindo versões anteriores
@@ -45,10 +45,16 @@ public interface RulesService {
     CommissionRate updateRate(String id, CommissionRate updatedRule);
 
     /**
-     * Desativa uma regra (soft delete)
+        * Desativa uma regra, sem excluí-la
      * @param id ID da regra
      */
     void deactivateRate(String id);
+
+        /**
+        * Exclui uma regra via soft delete
+        * @param id ID da regra
+        */
+        void softDeleteRate(String id);
 
     /**
      * Ativa uma regra existente, desde que não tenha sido removida (soft delete)

@@ -78,7 +78,7 @@ public class RulesController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteRate(@PathVariable String id) {
         try {
-            rulesService.deactivateRate(id);
+            rulesService.softDeleteRate(id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
