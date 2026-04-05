@@ -106,6 +106,64 @@ class RulesServiceTest {
         verify(exceptionRepo).findByYearMonthAndTypeAndMatricula(LocalDate.of(2025,7,1), ExceptionType.ABSENCE, "MATRIC-58");
     }
 
+    @Test void updateRate_mergesOnlyProvidedFields_andStoresFullPreviousVersion() {
+        var current = CommissionRate.builder()
+            .id("123")
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR LOJA")
+            .pctComiss(0.025)
+            .data(LocalDate.of(2026, 3, 1))
+            .textoOriginal("texto atual")
+            .explicacao("explicacao atual")
+            .versao(3)
+            .isVigente(true)
+            .createdAt(LocalDateTime.of(2026, 4, 1, 10, 0))
+            .updatedAt(LocalDateTime.of(2026, 4, 2, 10, 0))
+            .deletedAt(null)
+            .versoesAnteriores(new java.util.ArrayList<>())
+            .build();
+        when(rateRepo.findById("123")).thenReturn(Optional.of(current));
+
+        var updated = CommissionRate.builder()
+            .descrMarca("CINZA")
+            .pctComiss(0.03)
+            .isVigente(false)
+            .build();
+
+        service.updateRate("123", updated);
+
+        assertThat(current.getCodMarca()).isEqualTo(10);
+        assertThat(current.getDescrMarca()).isEqualTo("CINZA");
+        assertThat(current.getCodCargo()).isEqualTo(100);
+        assertThat(current.getDescriCargo()).isEqualTo("VENDEDOR LOJA");
+        assertThat(current.getPctComiss()).isEqualTo(0.03);
+        assertThat(current.getData()).isEqualTo(LocalDate.of(2026, 3, 1));
+        assertThat(current.getTextoOriginal()).isEqualTo("texto atual");
+        assertThat(current.getExplicacao()).isEqualTo("explicacao atual");
+        assertThat(current.getVersao()).isEqualTo(4);
+        assertThat(current.getUpdatedAt()).isNotNull();
+        assertThat(current.getIsVigente()).isFalse();
+        assertThat(current.getVersoesAnteriores()).hasSize(1);
+
+        var previous = current.getVersoesAnteriores().get(0);
+        assertThat(previous.getCodMarca()).isEqualTo(10);
+        assertThat(previous.getDescrMarca()).isEqualTo("PRETO");
+        assertThat(previous.getCodCargo()).isEqualTo(100);
+        assertThat(previous.getDescriCargo()).isEqualTo("VENDEDOR LOJA");
+        assertThat(previous.getPctComiss()).isEqualTo(0.025);
+        assertThat(previous.getData()).isEqualTo(LocalDate.of(2026, 3, 1));
+        assertThat(previous.getVersao()).isEqualTo(3);
+        assertThat(previous.getTextoOriginal()).isEqualTo("texto atual");
+        assertThat(previous.getExplicacao()).isEqualTo("explicacao atual");
+        assertThat(previous.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 1, 10, 0));
+        assertThat(previous.getUpdatedAt()).isEqualTo(LocalDateTime.of(2026, 4, 2, 10, 0));
+        assertThat(previous.getIsVigente()).isTrue();
+        assertThat(previous.getDeletedAt()).isNull();
+        verify(rateRepo).save(current);
+    }
+
     @Test void activateRate_whenNotDeleted_reattivatesRule() {
         var rate = CommissionRate.builder()
             .id("123")

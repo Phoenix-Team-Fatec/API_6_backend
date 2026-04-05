@@ -20,4 +20,11 @@ public record CreateCommissionRateRequest(
         }
         return YearMonth.parse(data).atDay(1);
     }
+
+    public LocalDate getDataAsLocalDateOrNull() {
+        if (data == null || data.isBlank()) {
+            return null;
+        }
+        return YearMonth.parse(data).atDay(1);
+    }
 }

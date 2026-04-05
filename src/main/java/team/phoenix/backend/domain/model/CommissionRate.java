@@ -59,12 +59,18 @@ public class CommissionRate {
     // Classe interna para versões anteriores
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class CommissionRateVersion {
-        private Integer versao;
+        private Integer codMarca;
+        private String descrMarca;
+        private Integer codCargo;
+        private String descriCargo;
         private Double pctComiss;
+        private LocalDate data;
+        private Integer versao;
         private String textoOriginal;
         private String explicacao;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private Boolean isVigente;
+        private LocalDateTime deletedAt;
     }
 }

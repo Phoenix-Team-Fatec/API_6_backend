@@ -47,23 +47,35 @@ public record CommissionRateResponse(
 
     // DTO para versões anteriores
     public record CommissionRateVersionResponse(
-        Integer versao,
+        Integer codMarca,
+        String descrMarca,
+        Integer codCargo,
+        String descriCargo,
         Double pctComiss,
+        LocalDate data,
+        Integer versao,
         String textoOriginal,
         String explicacao,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        Boolean isVigente
+        Boolean isVigente,
+        LocalDateTime deletedAt
     ) {
         public static CommissionRateVersionResponse from(CommissionRate.CommissionRateVersion v) {
             return new CommissionRateVersionResponse(
-                v.getVersao(),
+                v.getCodMarca(),
+                v.getDescrMarca(),
+                v.getCodCargo(),
+                v.getDescriCargo(),
                 v.getPctComiss(),
+                v.getData(),
+                v.getVersao(),
                 v.getTextoOriginal(),
                 v.getExplicacao(),
                 v.getCreatedAt(),
                 v.getUpdatedAt(),
-                v.getIsVigente()
+                v.getIsVigente(),
+                v.getDeletedAt()
             );
         }
     }

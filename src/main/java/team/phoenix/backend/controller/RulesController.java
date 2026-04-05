@@ -61,7 +61,7 @@ public class RulesController {
                 .codCargo(req.codCargo())
                 .descriCargo(req.descriCargo())
                 .pctComiss(req.pctComiss())
-                .data(req.getDataAsLocalDate())
+                .data(req.getDataAsLocalDateOrNull())
                 .textoOriginal(req.textoOriginal())
                 .explicacao(req.explicacao())
                 .build();

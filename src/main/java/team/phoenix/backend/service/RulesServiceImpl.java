@@ -117,32 +117,67 @@ public class RulesServiceImpl implements RulesService {
 
         CommissionRate current = existing.get();
 
-        // Guardar versão anterior no histórico
+        if (current.getVersoesAnteriores() == null) {
+            current.setVersoesAnteriores(new ArrayList<>());
+        }
+
+        // Guardar versão anterior no histórico, sem carregar versoesAnteriores
         CommissionRate.CommissionRateVersion previousVersion = CommissionRate.CommissionRateVersion.builder()
-            .versao(current.getVersao())
+            .codMarca(current.getCodMarca())
+            .descrMarca(current.getDescrMarca())
+            .codCargo(current.getCodCargo())
+            .descriCargo(current.getDescriCargo())
             .pctComiss(current.getPctComiss())
+            .data(current.getData())
+            .versao(current.getVersao())
             .textoOriginal(current.getTextoOriginal())
             .explicacao(current.getExplicacao())
             .createdAt(current.getCreatedAt())
             .updatedAt(current.getUpdatedAt())
             .isVigente(current.getIsVigente())
+            .deletedAt(current.getDeletedAt())
             .build();
 
         current.getVersoesAnteriores().add(previousVersion);
 
-        // Atualizar campos
-        current.setPctComiss(updatedRule.getPctComiss());
-        current.setData(updatedRule.getData());
-        current.setDescrMarca(updatedRule.getDescrMarca());
-        current.setDescriCargo(updatedRule.getDescriCargo());
+        // Atualizar somente os campos enviados; manter o restante
+        if (updatedRule.getCodMarca() != null) {
+            current.setCodMarca(updatedRule.getCodMarca());
+        }
+        if (updatedRule.getDescrMarca() != null) {
+            current.setDescrMarca(updatedRule.getDescrMarca());
+        }
+        if (updatedRule.getCodCargo() != null) {
+            current.setCodCargo(updatedRule.getCodCargo());
+        }
+        if (updatedRule.getDescriCargo() != null) {
+            current.setDescriCargo(updatedRule.getDescriCargo());
+        }
+        if (updatedRule.getPctComiss() != null) {
+            current.setPctComiss(updatedRule.getPctComiss());
+        }
+        if (updatedRule.getData() != null) {
+            current.setData(updatedRule.getData());
+        }
+        if (updatedRule.getTextoOriginal() != null) {
+            current.setTextoOriginal(updatedRule.getTextoOriginal());
+        }
+        if (updatedRule.getExplicacao() != null) {
+            current.setExplicacao(updatedRule.getExplicacao());
+        }
+        if (updatedRule.getIsVigente() != null) {
+            current.setIsVigente(updatedRule.getIsVigente());
+        }
         current.setVersao(current.getVersao() + 1);
         current.setUpdatedAt(LocalDateTime.now());
-        Boolean vigente = updatedRule.getIsVigente();
-        current.setIsVigente(vigente != null && vigente);
 
-        // Regenerar texto e pseudocódigo
-        current.setTextoOriginal(TextualRuleGenerator.generate(current));
-        current.setExplicacao(PseudoCodeGenerator.generate(current));
+        // Atualizar texto e pseudocódigo apenas quando forem enviados
+        if (updatedRule.getTextoOriginal() != null) {
+            current.setTextoOriginal(updatedRule.getTextoOriginal());
+        }
+        if (updatedRule.getExplicacao() != null) {
+            current.setExplicacao(updatedRule.getExplicacao());
+        }
 
         return rateRepo.save(current);
     }

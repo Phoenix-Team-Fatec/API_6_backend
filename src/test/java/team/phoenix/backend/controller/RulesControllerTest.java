@@ -161,6 +161,27 @@ class RulesControllerTest {
             .andExpect(jsonPath("$.versao").value(2));
     }
 
+    @Test void updateRate_withoutData_keepsNullInRequestToService() throws Exception {
+        var updated = CommissionRate.builder()
+            .id("123")
+            .codMarca(10).descrMarca("PRETO")
+            .codCargo(100).descriCargo("VENDEDOR LOJA")
+            .pctComiss(0.03)
+            .versao(2)
+            .isVigente(true)
+            .createdAt(LocalDateTime.now())
+            .updatedAt(LocalDateTime.now())
+            .build();
+        when(rulesService.updateRate(anyString(), any())).thenReturn(updated);
+
+        mockMvc.perform(put("/api/rules/123")
+                .contentType("application/json")
+                .content("{\"codMarca\":10,\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.03}"))
+            .andExpect(status().isOk());
+
+        verify(rulesService).updateRate(anyString(), argThat(r -> r.getData() == null));
+    }
+
     @Test void deleteRate_returnsNoContent() throws Exception {
         mockMvc.perform(delete("/api/rules/123"))
             .andExpect(status().isNoContent());
