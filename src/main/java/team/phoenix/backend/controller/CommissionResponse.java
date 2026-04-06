@@ -1,12 +1,13 @@
 package team.phoenix.backend.controller;
 
 import team.phoenix.backend.service.CommissionResult;
+import java.time.LocalDate;
 import java.util.List;
 
 // DTO que formata resultado de cálculo de comissão para resposta HTTP
 public record CommissionResponse(
     String matricula,
-    String month,
+    LocalDate month,
     EmployeeInfo employee,
     double salesBase,
     double commissionRate,

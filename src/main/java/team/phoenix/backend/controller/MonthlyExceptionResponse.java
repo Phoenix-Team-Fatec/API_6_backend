@@ -9,7 +9,7 @@ import java.util.List;
 
 public record MonthlyExceptionResponse(
     String id,
-    String yearMonth,
+    LocalDate yearMonth,
     ExceptionType type,
     String matricula,
     LocalDate startDate,

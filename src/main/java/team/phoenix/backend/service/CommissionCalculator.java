@@ -2,7 +2,7 @@ package team.phoenix.backend.service;
 
 import team.phoenix.backend.domain.model.HrRecord;
 import team.phoenix.backend.domain.model.MonthlyException;
-import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 
 // Interface para cálculo complexo de comissões com regras de admissão, demissão, afastamento e férias
@@ -20,5 +20,5 @@ public interface CommissionCalculator {
      */
     CommissionResult calculate(HrRecord hr, double individualSales, double storeSales,
                                double baseRate, List<MonthlyException> exceptions,
-                               YearMonth month);
+                               LocalDate month);
 }

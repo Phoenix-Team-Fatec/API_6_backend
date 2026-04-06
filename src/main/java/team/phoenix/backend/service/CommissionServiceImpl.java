@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import team.phoenix.backend.domain.model.*;
 import team.phoenix.backend.domain.repository.*;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.List;
 
 // Serviço que orquestra o cálculo de comissões buscando dados do BD
@@ -21,12 +20,12 @@ public class CommissionServiceImpl implements CommissionService {
 
     // Simula cálculo de comissão para um funcionário em um mês
     // Parâm matricula: matrícula do funcionário (String)
-    // Parâm month: mês desejado (YearMonth)
+    // Parâm month: mês desejado (dia 1 do mês)
     // Retorna: CommissionResult com dados completos do cálculo
     // Lança: RuntimeException se HR ou taxa não encontrados
     @Override
-    public CommissionResult simulate(String matricula, YearMonth month) {
-        LocalDate ref = month.atDay(1);
+    public CommissionResult simulate(String matricula, LocalDate month) {
+        LocalDate ref = month;
 
         HrRecord hr = hrRepo.findByMatriculaAndDataRef(matricula, ref)
             .orElseThrow(() -> new RuntimeException(
@@ -42,7 +41,7 @@ public class CommissionServiceImpl implements CommissionService {
                 "Commission rate not found: cod_marca=" + hr.getCodMarca()
                     + " cod_cargo=" + hr.getCodCargo()));
 
-        List<MonthlyException> exceptions = exceptionRepo.findByYearMonth(month.toString());
+        List<MonthlyException> exceptions = exceptionRepo.findByYearMonth(month);
         return calculator.calculate(hr, indSales, storeSales, rate.getPctComiss(), exceptions, month);
     }
 }

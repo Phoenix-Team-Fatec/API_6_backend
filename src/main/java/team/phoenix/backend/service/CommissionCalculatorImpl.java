@@ -26,11 +26,11 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
     @Override
     public CommissionResult calculate(HrRecord hr, double individualSales, double storeSales,
                                       double baseRate, List<MonthlyException> exceptions,
-                                      YearMonth month) {
+                                      LocalDate month) {
         double effectiveRate = applyRateOverride(baseRate, hr, exceptions);
         double salesBase = hr.getCodCargo() == MANAGER_CARGO ? storeSales : individualSales;
         int daysInMonth = month.lengthOfMonth();
-        LocalDate lastDay = month.atEndOfMonth();
+        LocalDate lastDay = month.withDayOfMonth(daysInMonth);
 
         var absence = exceptions.stream()
             .filter(e -> e.getType() == ExceptionType.ABSENCE
@@ -43,14 +43,14 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
 
         // Priority order per spec: ADMISSAO → DEMISSAO → ABSENCE → VACATION → GERAL
         RuleResult rule;
-        if (YearMonth.from(hr.getDataAdmiss()).equals(month)) {
+        if (YearMonth.from(hr.getDataAdmiss()).equals(YearMonth.from(month))) {
             int day = hr.getDataAdmiss().getDayOfMonth();
             int worked = daysInMonth - day + 1;
             double c = salesBase * effectiveRate * ((double) worked / daysInMonth);
             rule = new RuleResult(c, "ADMISSAO",
                 String.format("Admission day %d: %.2f x %.4f x (%d/%d) = %.2f",
                     day, salesBase, effectiveRate, worked, daysInMonth, c));
-        } else if (hr.getDataDemiss() != null && YearMonth.from(hr.getDataDemiss()).equals(month)) {
+        } else if (hr.getDataDemiss() != null && YearMonth.from(hr.getDataDemiss()).equals(YearMonth.from(month))) {
             int d = hr.getDataDemiss().getDayOfMonth();
             double c = salesBase * effectiveRate * ((double) d / daysInMonth);
             rule = new RuleResult(c, "DEMISSAO",
@@ -67,7 +67,7 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
         }
 
         BonusResult bonusResult = applyBonuses(hr, individualSales, storeSales, exceptions);
-        return new CommissionResult(hr.getMatricula(), month.toString(), hr,
+        return new CommissionResult(hr.getMatricula(), month, hr,
             salesBase, effectiveRate, rule.base(),
             bonusResult.descriptions(), bonusResult.total(),
             rule.base() + bonusResult.total(),
