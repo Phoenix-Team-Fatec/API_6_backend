@@ -1,32 +1,102 @@
 package team.phoenix.backend.service;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import team.phoenix.backend.domain.model.*;
-import team.phoenix.backend.domain.repository.*;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
-@Service
-@RequiredArgsConstructor
-public class RulesService {
+import team.phoenix.backend.domain.model.CommissionRate;
+import team.phoenix.backend.domain.model.ExceptionType;
+import team.phoenix.backend.domain.model.MonthlyException;
 
-    private final CommissionRateRepository rateRepo;
-    private final MonthlyExceptionRepository exceptionRepo;
+// Interface para gerenciamento de taxas de comissão e exceções mensais
+public interface RulesService {
 
-    public List<CommissionRate> listRates(Integer codMarca, Integer codCargo) {
-        if (codMarca != null && codCargo != null)
-            return rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
-                .map(List::of).orElse(List.of());
-        if (codMarca != null) return rateRepo.findByCodMarca(codMarca);
-        if (codCargo != null) return rateRepo.findByCodCargo(codCargo);
-        return rateRepo.findAll();
-    }
+     /**
+      * Lista as taxas de comissão com filtros opcionais (somente não deletadas)
+      * @param codMarca código da marca (opcional)
+      * @param codCargo código do cargo (opcional)
+      * @param isVigente filtro opcional de vigência; null retorna ativas e inativas
+      * @return lista de taxas de comissão não deletadas
+      */
+     List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente);
 
-    public List<MonthlyException> listExceptions(String yearMonth, ExceptionType type, String matricula) {
-        if (type != null && matricula != null)
-            return exceptionRepo.findByYearMonthAndTypeAndMatricula(yearMonth, type, matricula);
-        if (type != null) return exceptionRepo.findByYearMonthAndType(yearMonth, type);
-        if (matricula != null) return exceptionRepo.findByYearMonthAndMatricula(yearMonth, matricula);
-        return exceptionRepo.findByYearMonth(yearMonth);
-    }
+    /**
+     * Lista as taxas de comissão na lixeira (somente deletadas)
+     * @param codMarca código da marca (opcional)
+     * @param codCargo código do cargo (opcional)
+     * @param isVigente filtro opcional de vigência
+     * @return lista de taxas de comissão deletadas
+     */
+    List<CommissionRate> listTrashedRates(Integer codMarca, Integer codCargo, Boolean isVigente);
+
+    /**
+     * Lista as taxas de comissão incluindo versões anteriores
+     * @param codMarca código da marca (opcional)
+     * @param codCargo código do cargo (opcional)
+     * @param includeInactive se true, inclui regras inativas
+     * @return lista de taxas de comissão
+     */
+    List<CommissionRate> listRatesWithOptions(Integer codMarca, Integer codCargo, boolean includeInactive);
+
+    /**
+     * Cria uma nova regra de comissão com geração automática de texto e pseudocódigo
+     * @param rule regra a ser criada
+     * @return regra criada
+     */
+    CommissionRate createRate(CommissionRate rule);
+
+    /**
+     * Atualiza uma regra existente, criando uma nova versão
+     * @param id ID da regra
+     * @param updatedRule dados atualizados
+     * @return regra atualizada
+     */
+    CommissionRate updateRate(String id, CommissionRate updatedRule);
+
+    /**
+        * Desativa uma regra, sem excluí-la
+     * @param id ID da regra
+     */
+    void deactivateRate(String id);
+
+        /**
+        * Exclui uma regra via soft delete
+        * @param id ID da regra
+        */
+        void softDeleteRate(String id);
+
+    /**
+     * Ativa uma regra existente, desde que não tenha sido removida (soft delete)
+     * @param id ID da regra
+     */
+    void activateRate(String id);
+
+    /**
+     * Restaura uma regra removida (soft delete), mantendo-a inativa
+     * @param id ID da regra
+     */
+    void restoreRate(String id);
+
+    /**
+     * Reverte a regra para a versão anterior (ex.: 5 para 4)
+     * Se não houver histórico anterior, não realiza alteração.
+     * @param id ID da regra
+     */
+    void rollbackRate(String id);
+
+    /**
+     * Obtém uma regra pelo ID
+     * @param id ID da regra
+     * @return opcional contendo a regra
+     */
+    Optional<CommissionRate> getRateById(String id);
+
+    /**
+     * Lista as exceções mensais com filtros opcionais
+    * @param yearMonth dia 1 do mês de referência
+     * @param type tipo de exceção (opcional)
+     * @param matricula matrícula do funcionário (opcional)
+     * @return lista de exceções mensais
+     */
+    List<MonthlyException> listExceptions(LocalDate yearMonth, ExceptionType type, String matricula);
 }

@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDate;
 
+// Registro de venda com dados de data, funcionário e loja
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 @Document(collection = "sales_records")
 @CompoundIndexes({
