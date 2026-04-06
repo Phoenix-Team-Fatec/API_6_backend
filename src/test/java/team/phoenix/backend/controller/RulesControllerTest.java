@@ -301,4 +301,14 @@ class RulesControllerTest {
             .andExpect(status().isBadRequest())
             .andExpect(content().string("Invalid month format. Use yyyy-MM"));
     }
+
+    @Test void listAllExceptions_returnsOk() throws Exception {
+        var ex = MonthlyException.builder().yearMonth("2025-07").type(ExceptionType.ABSENCE).matricula("MATRIC-58").build();
+        when(rulesService.listAllExceptions()).thenReturn(List.of(ex));
+
+        mockMvc.perform(get("/api/rules/exceptions/all"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].yearMonth").value("2025-07"))
+            .andExpect(jsonPath("$[0].type").value("ABSENCE"));
+    }
 }

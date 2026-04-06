@@ -329,4 +329,11 @@ class RulesServiceTest {
 
         verify(rateRepo, never()).save(any());
     }
+
+    @Test void listAllExceptions_returnsAll() {
+        var ex = MonthlyException.builder().yearMonth("2025-07").type(ExceptionType.ABSENCE).build();
+        when(exceptionRepo.findAll()).thenReturn(List.of(ex));
+        assertThat(service.listAllExceptions()).hasSize(1);
+        verify(exceptionRepo).findAll();
+    }
 }

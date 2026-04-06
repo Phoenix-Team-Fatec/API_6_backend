@@ -12,6 +12,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
+// Controlador REST para listagem de regras de comissão e exceções mensais
 @RestController
 @RequestMapping("/api/rules")
 @CrossOrigin
@@ -20,6 +21,10 @@ public class RulesController {
 
     private final RulesService rulesService;
 
+    // GET /api/rules/commission-rates - Lista taxas de comissão com filtros opcionais
+    // Parâm codMarca: código da marca (opcional)
+    // Parâm codCargo: código do cargo (opcional)
+    // Retorna: lista de CommissionRateResponse
     @GetMapping("/commission-rates")
     public ResponseEntity<List<CommissionRateResponse>> listRates(
             @RequestParam(required = false) Integer codMarca,
@@ -158,6 +163,20 @@ public class RulesController {
         return ResponseEntity.notFound().build();
     }
 
+    // GET /api/rules/exceptions/all - Lista todas as exceções mensais sem filtro
+    // Retorna: lista completa de MonthlyExceptionResponse
+    @GetMapping("/exceptions/all")
+    public ResponseEntity<List<MonthlyExceptionResponse>> listAllExceptions() {
+        var exceptions = rulesService.listAllExceptions()
+            .stream().map(MonthlyExceptionResponse::from).toList();
+        return ResponseEntity.ok(exceptions);
+    }
+
+    // GET /api/rules/exceptions - Lista exceções mensais de um mês com filtros opcionais
+    // Parâm month: mês no formato yyyy-MM (obrigatório)
+    // Parâm type: tipo de exceção (opcional)
+    // Parâm matricula: matrícula do funcionário (opcional)
+    // Retorna: lista de MonthlyExceptionResponse ou 400 se formato inválido
     @GetMapping("/exceptions")
     public ResponseEntity<?> listExceptions(
             @RequestParam String month,

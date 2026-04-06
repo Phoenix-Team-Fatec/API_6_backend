@@ -15,6 +15,7 @@ import team.phoenix.backend.domain.model.MonthlyException;
 import team.phoenix.backend.domain.repository.CommissionRateRepository;
 import team.phoenix.backend.domain.repository.MonthlyExceptionRepository;
 
+// Implementação do serviço de listagem de regras e exceções mensais
 @Service
 @RequiredArgsConstructor
 public class RulesServiceImpl implements RulesService {
@@ -22,11 +23,27 @@ public class RulesServiceImpl implements RulesService {
     private final CommissionRateRepository rateRepo;
     private final MonthlyExceptionRepository exceptionRepo;
 
+    // Lista taxas de comissão com filtros opcionais por marca e/ou cargo
+    // Parâm codMarca: código da marca (opcional)
+    // Parâm codCargo: código do cargo (opcional)
+    // Retorna: lista de CommissionRate filtrada ou todas se sem filtro
     @Override
     public List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente) {
         return listRatesWithOptions(codMarca, codCargo, isVigente);
     }
 
+    // Lista todas as exceções mensais sem filtro
+    // Retorna: lista completa de MonthlyException de todos os meses
+    @Override
+    public List<MonthlyException> listAllExceptions() {
+        return exceptionRepo.findAll();
+    }
+
+    // Lista exceções mensais de um mês com filtros opcionais
+    // Parâm yearMonth: período no formato yyyy-MM
+    // Parâm type: tipo de exceção (opcional)
+    // Parâm matricula: matrícula do funcionário (opcional)
+    // Retorna: lista de MonthlyException filtrada
     @Override
     public List<CommissionRate> listTrashedRates(Integer codMarca, Integer codCargo, Boolean isVigente) {
         List<CommissionRate> rates;
