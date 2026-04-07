@@ -18,4 +18,7 @@ public interface SalesRecordRepository extends MongoRepository<SalesRecord, Stri
     // Parâm dateRef: data de referência
     // Retorna: lista de SalesRecord
     List<SalesRecord> findByCodLojaAndDateRef(Integer codLoja, LocalDate dateRef);
+
+    // Busca todas as vendas de uma data de referência (usado para enviar ao ML)
+    List<SalesRecord> findByDateRef(LocalDate dateRef);
 }

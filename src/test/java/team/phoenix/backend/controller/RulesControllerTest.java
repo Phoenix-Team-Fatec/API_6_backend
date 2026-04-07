@@ -6,6 +6,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import team.phoenix.backend.domain.model.*;
+import team.phoenix.backend.service.BusinessRuleService;
 import team.phoenix.backend.service.RulesService;
 import java.util.List;
 import static org.mockito.Mockito.*;
@@ -17,6 +18,7 @@ class RulesControllerTest {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean RulesService rulesService;
+    @MockitoBean BusinessRuleService businessRuleService;
 
     @Test void listRates_noFilter_returnsOk() throws Exception {
         var rate = CommissionRate.builder().codMarca(10).descrMarca("PRETO")

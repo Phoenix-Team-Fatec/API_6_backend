@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import team.phoenix.backend.domain.model.ExceptionType;
+import team.phoenix.backend.service.BusinessRuleService;
 import team.phoenix.backend.service.RulesService;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -17,6 +18,22 @@ import java.util.List;
 public class RulesController {
 
     private final RulesService rulesService;
+    private final BusinessRuleService businessRuleService;
+
+    // POST /api/rules/business-rule - Recebe texto em linguagem natural, chama ML e persiste a regra
+    @PostMapping("/business-rule")
+    public ResponseEntity<BusinessRuleResponse> createBusinessRule(@RequestBody BusinessRuleRequest request) {
+        var rule = businessRuleService.create(request.rawText(), request.yearMonth());
+        return ResponseEntity.status(201).body(BusinessRuleResponse.from(rule));
+    }
+
+    // GET /api/rules/business-rule - Lista todas as regras de negócio criadas
+    @GetMapping("/business-rule")
+    public ResponseEntity<List<BusinessRuleResponse>> listBusinessRules() {
+        var rules = businessRuleService.listAll()
+            .stream().map(BusinessRuleResponse::from).toList();
+        return ResponseEntity.ok(rules);
+    }
 
     // GET /api/rules/commission-rates - Lista taxas de comissão com filtros opcionais
     // Parâm codMarca: código da marca (opcional)

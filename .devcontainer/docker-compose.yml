@@ -12,6 +12,10 @@ services:
     env_file:
       - ../.env
     command: sleep infinity
+    # Allows the container to reach services running on the host machine (e.g. ML API).
+    # Works automatically on Windows/Mac. On Linux, host-gateway maps to the host IP.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       mongo:
         condition: service_healthy
@@ -25,6 +29,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: phoenix
       MONGO_INITDB_ROOT_PASSWORD: phoenix
+    ports:
+      - "27018:27017"
     volumes:
       - mongo-data:/data/db
     networks:
