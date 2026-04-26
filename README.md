@@ -139,6 +139,11 @@ mvn test
 - `POST /api/rules/{id}/restore`: restaura uma regra removida.
 - `POST /api/rules/{id}/rollback`: reverte uma regra para versão anterior.
 - `GET /api/rules/exceptions?month=yyyy-MM`: lista exceções mensais, com filtros opcionais por tipo e matrícula.
+- `GET /api/brands`: lista marcas com filtros opcionais por código, nome e descrição.
+- `GET /api/brands/{id}`: busca uma marca por id.
+- `POST /api/brands`: cria uma nova marca.
+- `PUT /api/brands/{id}`: atualiza uma marca.
+- `DELETE /api/brands/{id}`: remove uma marca.
 
 ## Exemplos rápidos
 
