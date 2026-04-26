@@ -144,6 +144,11 @@ mvn test
 - `POST /api/brands`: cria uma nova marca.
 - `PUT /api/brands/{id}`: atualiza uma marca.
 - `DELETE /api/brands/{id}`: remove uma marca.
+- `GET /api/stores`: lista lojas com filtros opcionais por código, nome e descrição.
+- `GET /api/stores/{id}`: busca uma loja por id.
+- `POST /api/stores`: cria uma nova loja.
+- `PUT /api/stores/{id}`: atualiza uma loja.
+- `DELETE /api/stores/{id}`: remove uma loja.
 
 ## Exemplos rápidos
 
