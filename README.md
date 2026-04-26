@@ -140,6 +140,16 @@ mvn test
 - `POST /api/rules/{id}/rollback`: reverte uma regra para versão anterior.
 - `GET /api/rules/exceptions?month=yyyy-MM`: lista exceções mensais, com filtros opcionais por tipo e matrícula.
 
+## 🔍 FUNCIONARIOS
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| `GET` | `/api/funcionarios` | Lista todos os funcionários ativos |
+| `GET` | `/api/funcionarios/{matricula}` | Busca funcionário por matrícula |
+| `DELETE` | `/api/funcionarios/{id}` | Soft delete (marca como inativo) |
+| `POST` | `/api/funcionarios/{id}/reactivate` | Reativa funcionário |
+| `POST` | `/api/funcionarios/consolidate` | **Consolida hr_records → funcionarios** |
+
 ## Exemplos rápidos
 
 Healthcheck:
