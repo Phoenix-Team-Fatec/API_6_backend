@@ -87,6 +87,43 @@ public class DataImportService {
         return result;
     }
 
+    // Cria funcionarios a partir dos registros de RH
+    // Retorna: lista de Funcionario com dados basicos (sem comissao por enquanto)
+    public List<Funcionario> readFuncionarios() throws IOException {
+        List<HrRecord> hrRecords = readHrRecords();
+        List<Funcionario> result = new ArrayList<>();
+        
+        for (HrRecord hr : hrRecords) {
+            Cargo cargo = Cargo.builder()
+                .codCargo(String.valueOf(hr.getCodCargo()))
+                .descricaoDoCargo(hr.getDescriCargo())
+                .build();
+            
+            Funcionario func = Funcionario.builder()
+                .yearMonth(convertLocalDateToDate(hr.getDataRef()))
+                .matricula(hr.getMatricula())
+                .type("CLT")
+                .startDate(hr.getDataAdmiss() != null ? convertLocalDateToDate(hr.getDataAdmiss()) : null)
+                .endDate(hr.getDataDemiss() != null ? convertLocalDateToDate(hr.getDataDemiss()) : null)
+                .appliesToManagers(false)
+                .cargo(cargo)
+                .comissao(null)
+                .deletedAt(null)
+                .build();
+            
+            result.add(func);
+        }
+        return result;
+    }
+
+    // Converte LocalDate para java.util.Date
+    // Param localDate: data em LocalDate
+    // Retorna: java.util.Date ou null se input null
+    private java.util.Date convertLocalDateToDate(LocalDate localDate) {
+        if (localDate == null) return null;
+        return java.sql.Date.valueOf(localDate);
+    }
+
     // Le registros de vendas de arquivos Excel
     // Retorna: lista de SalesRecord
     public List<SalesRecord> readSalesRecords() throws IOException {

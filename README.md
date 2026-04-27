@@ -150,6 +150,16 @@ mvn test
 - `PUT /api/stores/{id}`: atualiza uma loja.
 - `DELETE /api/stores/{id}`: remove uma loja.
 
+## 🔍 FUNCIONARIOS
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| `GET` | `/api/funcionarios` | Lista todos os funcionários ativos |
+| `GET` | `/api/funcionarios/{matricula}` | Busca funcionário por matrícula |
+| `DELETE` | `/api/funcionarios/{id}` | Soft delete (marca como inativo) |
+| `POST` | `/api/funcionarios/{id}/reactivate` | Reativa funcionário |
+| `POST` | `/api/funcionarios/consolidate` | **Consolida hr_records → funcionarios** |
+
 ## Exemplos rápidos
 
 Healthcheck:

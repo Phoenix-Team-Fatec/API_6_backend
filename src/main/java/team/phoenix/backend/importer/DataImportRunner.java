@@ -20,6 +20,7 @@ public class DataImportRunner implements CommandLineRunner {
     private final HrRecordRepository hrRepo;
     private final SalesRecordRepository salesRepo;
     private final MonthlyExceptionRepository exceptionRepo;
+    private final FuncionarioRepository funcionarioRepo;
 
     // Executa importaão de dados ao iniciar a aplicação
     // Parâm args: argumentos de linha de comando (não utilizados)
@@ -32,6 +33,7 @@ public class DataImportRunner implements CommandLineRunner {
         hrRepo.deleteAll();
         salesRepo.deleteAll();
         exceptionRepo.deleteAll();
+        funcionarioRepo.deleteAll();
 
         var rates = importService.readCommissionRates();
         rateRepo.saveAll(rates);
@@ -44,6 +46,10 @@ public class DataImportRunner implements CommandLineRunner {
         var sales = importService.readSalesRecords();
         salesRepo.saveAll(sales);
         log.info("sales_records: {}", sales.size());
+
+        var funcionarios = importService.readFuncionarios();
+        funcionarioRepo.saveAll(funcionarios);
+        log.info("funcionarios: {}", funcionarios.size());
 
         var exceptions = seeder.buildAll();
         exceptionRepo.saveAll(exceptions);
