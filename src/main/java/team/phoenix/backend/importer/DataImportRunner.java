@@ -15,6 +15,8 @@ import team.phoenix.backend.domain.repository.*;
 public class DataImportRunner implements CommandLineRunner {
 
     private final DataImportService importService;
+    private final BrandImporter brandImporter;
+    private final StoreImporter storeImporter;
     private final ExceptionSeeder seeder;
     private final CommissionRateRepository rateRepo;
     private final HrRecordRepository hrRepo;
@@ -42,6 +44,12 @@ public class DataImportRunner implements CommandLineRunner {
         var hrRecords = importService.readHrRecords();
         hrRepo.saveAll(hrRecords);
         log.info("hr_records: {}", hrRecords.size());
+
+        int importedBrands = brandImporter.importFromBaseRh();
+        log.info("brands imported: {}", importedBrands);
+
+        int importedStores = storeImporter.importFromBaseRh();
+        log.info("stores imported: {}", importedStores);
 
         var sales = importService.readSalesRecords();
         salesRepo.saveAll(sales);
