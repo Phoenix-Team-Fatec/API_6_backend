@@ -17,6 +17,7 @@ public class DataImportRunner implements CommandLineRunner {
     private final DataImportService importService;
     private final BrandImporter brandImporter;
     private final StoreImporter storeImporter;
+    private final PositionImporter positionImporter;
     private final ExceptionSeeder seeder;
     private final CommissionRateRepository rateRepo;
     private final HrRecordRepository hrRepo;
@@ -50,6 +51,9 @@ public class DataImportRunner implements CommandLineRunner {
 
         int importedStores = storeImporter.importFromBaseRh();
         log.info("stores imported: {}", importedStores);
+
+        int importedPositions = positionImporter.importFromCommissionBase();
+        log.info("positions imported: {}", importedPositions);
 
         var sales = importService.readSalesRecords();
         salesRepo.saveAll(sales);
