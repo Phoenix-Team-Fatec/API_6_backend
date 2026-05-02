@@ -10,7 +10,8 @@
       "extensions": [
         "vscjava.vscode-java-pack",
         "mongodb.mongodb-vscode",
-        "vasubasraj.flashpost"
+        "vasubasraj.flashpost",
+        "openai.chatgpt"
       ]
     }
   },
