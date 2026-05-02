@@ -175,6 +175,17 @@ class RulesControllerTest {
         ));
     }
 
+    @Test void createRate_whenServiceRejectsRule_returnsBadRequest() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("codMarca is required"))
+            .when(rulesService).createRate(any());
+
+        mockMvc.perform(post("/api/rules")
+                .contentType("application/json")
+                .content("{\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.025}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string("Erro ao criar regra: codMarca is required"));
+    }
+
     @Test void updateRate_withValidData_returnsOk() throws Exception {
         var updated = CommissionRate.builder()
             .id("123")
@@ -214,6 +225,27 @@ class RulesControllerTest {
             .andExpect(status().isOk());
 
         verify(rulesService).updateRate(anyString(), argThat(r -> r.getData() == null));
+    }
+
+    @Test void updateRate_whenServiceRejectsRule_returnsBadRequest() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("pctComiss must be greater than or equal to zero"))
+            .when(rulesService).updateRate(anyString(), any());
+
+        mockMvc.perform(put("/api/rules/123")
+                .contentType("application/json")
+                .content("{\"pctComiss\":-0.01}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string("Erro ao atualizar regra: pctComiss must be greater than or equal to zero"));
+    }
+
+    @Test void updateRate_whenRuleDoesNotExist_returnsNotFound() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Regra não encontrada: 123"))
+            .when(rulesService).updateRate(anyString(), any());
+
+        mockMvc.perform(put("/api/rules/123")
+                .contentType("application/json")
+                .content("{\"pctComiss\":0.03}"))
+            .andExpect(status().isNotFound());
     }
 
     @Test void deleteRate_returnsNoContent() throws Exception {
@@ -294,6 +326,18 @@ class RulesControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].yearMonth").value("2025-07-01"))
             .andExpect(jsonPath("$[0].type").value("ABSENCE"));
+    }
+
+    @Test void listExceptions_multiStore_returnsAlternateStoreFields() throws Exception {
+        var ex = MonthlyException.builder().yearMonth(LocalDate.of(2025,7,1))
+            .type(ExceptionType.MULTI_STORE).matricula("MATRIC-293")
+            .alternateCodLoja(5).daysWorked(10).build();
+        when(rulesService.listExceptions(LocalDate.of(2025,7,1), null, null)).thenReturn(List.of(ex));
+
+        mockMvc.perform(get("/api/rules/exceptions").param("month", "2025-07"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].alternateCodLoja").value(5))
+            .andExpect(jsonPath("$[0].daysWorked").value(10));
     }
 
     @Test void listExceptions_invalidMonthFormat_returns400() throws Exception {

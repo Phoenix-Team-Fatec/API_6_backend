@@ -21,6 +21,52 @@ class RulesServiceTest {
     @Mock MonthlyExceptionRepository exceptionRepo;
     @InjectMocks RulesServiceImpl service;
 
+    @Test void createRate_rejectsMissingCodMarca() {
+        var rate = validRate();
+        rate.setCodMarca(null);
+
+        assertThatThrownBy(() -> service.createRate(rate))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("codMarca is required");
+        verify(rateRepo, never()).save(any());
+    }
+
+    @Test void createRate_rejectsMissingCodCargo() {
+        var rate = validRate();
+        rate.setCodCargo(null);
+
+        assertThatThrownBy(() -> service.createRate(rate))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("codCargo is required");
+        verify(rateRepo, never()).save(any());
+    }
+
+    @Test void createRate_rejectsNegativePctComiss() {
+        var rate = validRate();
+        rate.setPctComiss(-0.01);
+
+        assertThatThrownBy(() -> service.createRate(rate))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("pctComiss must be greater than or equal to zero");
+        verify(rateRepo, never()).save(any());
+    }
+
+    @Test void createRate_rejectsBlankDescriptions() {
+        var missingBrandDescription = validRate();
+        missingBrandDescription.setDescrMarca(" ");
+        assertThatThrownBy(() -> service.createRate(missingBrandDescription))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("descrMarca is required");
+
+        var missingCargoDescription = validRate();
+        missingCargoDescription.setDescriCargo("");
+        assertThatThrownBy(() -> service.createRate(missingCargoDescription))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("descriCargo is required");
+
+        verify(rateRepo, never()).save(any());
+    }
+
     @Test void listRates_noFilter_returnsActiveAndInactiveButNotDeleted() {
         var active = CommissionRate.builder().isVigente(true).deletedAt(null).build();
         var inactive = CommissionRate.builder().isVigente(false).deletedAt(null).build();
@@ -328,5 +374,15 @@ class RulesServiceTest {
         service.rollbackRate("123");
 
         verify(rateRepo, never()).save(any());
+    }
+
+    private CommissionRate validRate() {
+        return CommissionRate.builder()
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR LOJA")
+            .pctComiss(0.025)
+            .build();
     }
 }
