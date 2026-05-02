@@ -109,6 +109,8 @@ public class RulesServiceImpl implements RulesService {
 
     @Override
     public CommissionRate createRate(CommissionRate rule) {
+        validateCreateRate(rule);
+
         // Preencher valores padrão
         if (rule.getVersao() == null || rule.getVersao() == 0) {
             rule.setVersao(1);
@@ -138,6 +140,8 @@ public class RulesServiceImpl implements RulesService {
 
     @Override
     public CommissionRate updateRate(String id, CommissionRate updatedRule) {
+        validatePartialRateUpdate(updatedRule);
+
         Optional<CommissionRate> existing = rateRepo.findById(id);
         if (existing.isEmpty()) {
             throw new IllegalArgumentException("Regra não encontrada: " + id);
@@ -312,5 +316,41 @@ public class RulesServiceImpl implements RulesService {
         if (type != null) return exceptionRepo.findByYearMonthAndType(yearMonth, type);
         if (matricula != null) return exceptionRepo.findByYearMonthAndMatricula(yearMonth, matricula);
         return exceptionRepo.findByYearMonth(yearMonth);
+    }
+
+    private void validateCreateRate(CommissionRate rule) {
+        if (rule == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+        if (rule.getCodMarca() == null) {
+            throw new IllegalArgumentException("codMarca is required");
+        }
+        if (rule.getCodCargo() == null) {
+            throw new IllegalArgumentException("codCargo is required");
+        }
+        if (rule.getPctComiss() == null || rule.getPctComiss() < 0) {
+            throw new IllegalArgumentException("pctComiss must be greater than or equal to zero");
+        }
+        if (rule.getDescrMarca() == null || rule.getDescrMarca().isBlank()) {
+            throw new IllegalArgumentException("descrMarca is required");
+        }
+        if (rule.getDescriCargo() == null || rule.getDescriCargo().isBlank()) {
+            throw new IllegalArgumentException("descriCargo is required");
+        }
+    }
+
+    private void validatePartialRateUpdate(CommissionRate rule) {
+        if (rule == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+        if (rule.getPctComiss() != null && rule.getPctComiss() < 0) {
+            throw new IllegalArgumentException("pctComiss must be greater than or equal to zero");
+        }
+        if (rule.getDescrMarca() != null && rule.getDescrMarca().isBlank()) {
+            throw new IllegalArgumentException("descrMarca is required");
+        }
+        if (rule.getDescriCargo() != null && rule.getDescriCargo().isBlank()) {
+            throw new IllegalArgumentException("descriCargo is required");
+        }
     }
 }
