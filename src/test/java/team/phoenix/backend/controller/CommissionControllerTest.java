@@ -125,16 +125,17 @@ class CommissionControllerTest {
     }
 
     @Test void calculate_returns404ForMissingEmployeeOrRate() throws Exception {
-        when(commissionService.calculate(any()))
-            .thenThrow(new EmployeeNotFoundException("No HR records found"));
+        doThrow(new EmployeeNotFoundException("No HR records found"))
+            .when(commissionService).calculate(any());
 
         mockMvc.perform(post("/api/commission/calculate")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"month\":\"2025-07\",\"targetType\":\"EMPLOYEE\",\"matricula\":\"MATRIC-999\"}"))
             .andExpect(status().isNotFound());
 
-        when(commissionService.calculate(any()))
-            .thenThrow(new CommissionRateNotFoundException("Commission rate not found"));
+        reset(commissionService);
+        doThrow(new CommissionRateNotFoundException("Commission rate not found"))
+            .when(commissionService).calculate(any());
 
         mockMvc.perform(post("/api/commission/calculate")
                 .contentType(MediaType.APPLICATION_JSON)

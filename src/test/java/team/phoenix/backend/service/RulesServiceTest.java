@@ -22,6 +22,9 @@ class RulesServiceTest {
 
     @Mock CommissionRateRepository rateRepo;
     @Mock MonthlyExceptionRepository exceptionRepo;
+    @Mock BrandRepository brandRepository;
+    @Mock PositionRepository positionRepository;
+    @Mock AiIntegrationClient aiIntegrationClient;
     @Mock AuditLogService auditLogService;
     @InjectMocks RulesServiceImpl service;
 
@@ -96,9 +99,17 @@ class RulesServiceTest {
 
     @Test void listRates_filterByBoth_returnsFiltered() {
         var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
-        when(rateRepo.findByCodMarcaAndCodCargo(10, 100)).thenReturn(Optional.of(rate));
+        when(rateRepo.findByCodMarcaAndCodCargo(10, 100)).thenReturn(List.of(rate));
         assertThat(service.listRates(10, 100, null)).hasSize(1);
         verify(rateRepo).findByCodMarcaAndCodCargo(10, 100);
+    }
+
+    @Test void listRates_filterByBoth_returnsMultipleRulesForSameBrandAndPosition() {
+        var oldRate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
+        var generatedRate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.06).isVigente(true).build();
+        when(rateRepo.findByCodMarcaAndCodCargo(10, 100)).thenReturn(List.of(oldRate, generatedRate));
+
+        assertThat(service.listRates(10, 100, null)).containsExactly(oldRate, generatedRate);
     }
 
     @Test void listRates_withIsVigenteTrue_returnsOnlyActive() {
@@ -163,6 +174,90 @@ class RulesServiceTest {
         var ex = MonthlyException.builder().yearMonth(LocalDate.of(2025,7,1)).matricula("MATRIC-58").build();
         when(exceptionRepo.findByYearMonthAndMatricula(LocalDate.of(2025,7,1), "MATRIC-58")).thenReturn(List.of(ex));
         assertThat(service.listExceptions(LocalDate.of(2025,7,1), null, "MATRIC-58")).hasSize(1);
+    }
+
+    @Test void generateFromNaturalLanguage_withOverride_createsCommissionRateUsingAiExplanation() {
+        var prompt = "Em maio de 2026, marca 10 cargo 100 recebe 5% de comissao";
+        var override = new AiAgentOverride(
+            "Regra sazonal",
+            LocalDate.of(2026, 5, 1),
+            LocalDate.of(2026, 5, 31),
+            java.util.Map.of("10,100", 5.0),
+            java.util.Map.of(),
+            java.util.Map.of()
+        );
+        var aiResponse = new AiAgentResponse("override", override, null, "A IA alterou a taxa para 5% em maio.");
+        var saved = CommissionRate.builder()
+            .id("rate-1")
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR")
+            .pctComiss(0.05)
+            .data(LocalDate.of(2026, 5, 1))
+            .textoOriginal(prompt)
+            .explicacao("A IA alterou a taxa para 5% em maio.")
+            .versao(1)
+            .isVigente(true)
+            .build();
+
+        when(aiIntegrationClient.askAgent(prompt)).thenReturn(aiResponse);
+        when(brandRepository.findByCodigo(10)).thenReturn(Optional.of(Brand.builder().codigo(10).nome("PRETO").build()));
+        when(positionRepository.findByCodigo(100)).thenReturn(Optional.of(Position.builder().codigo(100).nome("VENDEDOR").build()));
+        when(rateRepo.save(any())).thenReturn(saved);
+
+        var result = service.generateFromNaturalLanguage(prompt);
+
+        assertThat(result.tipo()).isEqualTo("override");
+        assertThat(result.rules()).containsExactly(saved);
+        assertThat(result.exceptions()).isEmpty();
+        verify(rateRepo).save(argThat(rate ->
+            rate.getCodMarca().equals(10)
+                && rate.getCodCargo().equals(100)
+                && rate.getPctComiss().equals(0.05)
+                && rate.getTextoOriginal().equals(prompt)
+                && rate.getExplicacao().equals("A IA alterou a taxa para 5% em maio.")
+        ));
+    }
+
+    @Test void generateFromNaturalLanguage_withIntercorrencia_createsMonthlyException() {
+        var prompt = "MATRIC-1 recebe bonus fixo de 500 reais em maio";
+        var aiException = new AiAgentIntercorrencia(
+            "MATRIC-1",
+            "bonus_fixo",
+            500.0,
+            LocalDate.of(2026, 5, 1),
+            LocalDate.of(2026, 5, 31)
+        );
+        var aiResponse = new AiAgentResponse(
+            "intercorrencia",
+            null,
+            List.of(aiException),
+            "A IA gerou bonus fixo mensal para a matricula."
+        );
+        var saved = MonthlyException.builder()
+            .id("ex-1")
+            .yearMonth(LocalDate.of(2026, 5, 1))
+            .type(ExceptionType.BONUS_FIXED)
+            .matricula("MATRIC-1")
+            .amount(500.0)
+            .startDate(LocalDate.of(2026, 5, 1))
+            .endDate(LocalDate.of(2026, 5, 31))
+            .build();
+
+        when(aiIntegrationClient.askAgent(prompt)).thenReturn(aiResponse);
+        when(exceptionRepo.save(any())).thenReturn(saved);
+
+        var result = service.generateFromNaturalLanguage(prompt);
+
+        assertThat(result.tipo()).isEqualTo("intercorrencia");
+        assertThat(result.rules()).isEmpty();
+        assertThat(result.exceptions()).containsExactly(saved);
+        verify(exceptionRepo).save(argThat(exception ->
+            exception.getType() == ExceptionType.BONUS_FIXED
+                && exception.getMatricula().equals("MATRIC-1")
+                && exception.getAmount().equals(500.0)
+        ));
     }
 
     @Test void listExceptions_byMonthTypeAndMatricula_returnsFiltered() {

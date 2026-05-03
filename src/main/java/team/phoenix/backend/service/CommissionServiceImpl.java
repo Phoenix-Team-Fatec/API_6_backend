@@ -1,7 +1,12 @@
 package team.phoenix.backend.service;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -30,6 +35,7 @@ public class CommissionServiceImpl implements CommissionService {
     private final SalesRecordRepository salesRepo;
     private final MonthlyExceptionRepository exceptionRepo;
     private final CommissionCalculator calculator;
+    private final CommissionAiClient aiClient;
 
     @Override
     public CommissionResult simulate(String matricula, LocalDate month) {
@@ -45,28 +51,43 @@ public class CommissionServiceImpl implements CommissionService {
         validateCommand(command);
         LocalDate month = command.monthAsLocalDate();
 
+        List<HrRecord> employees = resolveEmployees(command, month);
+        List<SalesRecord> sales = collectSalesForEmployees(employees, month);
+        List<CommissionRate> monthlyOverrides = collectMonthlyOverridesForEmployees(employees, month);
+        List<CommissionRate> rates = collectRatesForEmployees(employees, monthlyOverrides);
+        List<MonthlyException> exceptions = exceptionRepo.findByYearMonth(month);
+
+        var aiRequest = AiCommissionRequest.from(employees, sales, rates, exceptions, monthlyOverrides, month);
+        var aiResults = aiClient.calculate(aiRequest, month.getYear(), month.getMonthValue());
+        var items = mapAiResults(aiResults, employees, month);
+
+        return CommissionCalculationResult.from(
+            month,
+            command.targetType(),
+            resolveTargetId(command),
+            items
+        );
+    }
+
+    private List<HrRecord> resolveEmployees(CommissionCalculationCommand command, LocalDate month) {
         return switch (command.targetType()) {
-            case EMPLOYEE -> calculateForEmployee(command, month);
-            case STORE -> calculateForStore(command, month);
-            case BRAND -> calculateForBrand(command, month);
+            case EMPLOYEE -> List.of(resolveEmployee(command, month));
+            case STORE -> resolveStoreEmployees(command, month);
+            case BRAND -> resolveBrandEmployees(command, month);
         };
     }
 
-    private CommissionCalculationResult calculateForEmployee(CommissionCalculationCommand command, LocalDate month) {
+    private HrRecord resolveEmployee(CommissionCalculationCommand command, LocalDate month) {
         if (command.matricula() == null || command.matricula().isBlank()) {
             throw new InvalidCommissionRequestException("matricula is required for EMPLOYEE target");
         }
 
-        CommissionResult item = simulate(command.matricula(), month);
-        return CommissionCalculationResult.from(
-            month,
-            CommissionTargetType.EMPLOYEE,
-            command.matricula(),
-            List.of(item)
-        );
+        return hrRepo.findByMatriculaAndDataRef(command.matricula(), month)
+            .orElseThrow(() -> new EmployeeNotFoundException(
+                "HR record not found: matricula=" + command.matricula() + " month=" + month));
     }
 
-    private CommissionCalculationResult calculateForStore(CommissionCalculationCommand command, LocalDate month) {
+    private List<HrRecord> resolveStoreEmployees(CommissionCalculationCommand command, LocalDate month) {
         if (command.codLoja() == null) {
             throw new InvalidCommissionRequestException("codLoja is required for STORE target");
         }
@@ -77,19 +98,10 @@ public class CommissionServiceImpl implements CommissionService {
                 "No HR records found: codLoja=" + command.codLoja() + " month=" + month);
         }
 
-        List<CommissionResult> items = employees.stream()
-            .map(hr -> calculateEmployee(hr, month))
-            .toList();
-
-        return CommissionCalculationResult.from(
-            month,
-            CommissionTargetType.STORE,
-            String.valueOf(command.codLoja()),
-            items
-        );
+        return employees;
     }
 
-    private CommissionCalculationResult calculateForBrand(CommissionCalculationCommand command, LocalDate month) {
+    private List<HrRecord> resolveBrandEmployees(CommissionCalculationCommand command, LocalDate month) {
         if (command.codMarca() == null) {
             throw new InvalidCommissionRequestException("codMarca is required for BRAND target");
         }
@@ -100,16 +112,111 @@ public class CommissionServiceImpl implements CommissionService {
                 "No HR records found: codMarca=" + command.codMarca() + " month=" + month);
         }
 
-        List<CommissionResult> items = employees.stream()
-            .map(hr -> calculateEmployee(hr, month))
-            .toList();
+        return employees;
+    }
 
-        return CommissionCalculationResult.from(
+    private List<SalesRecord> collectSalesForEmployees(List<HrRecord> employees, LocalDate month) {
+        return employees.stream()
+            .map(HrRecord::getCodLoja)
+            .filter(Objects::nonNull)
+            .distinct()
+            .flatMap(codLoja -> salesRepo.findByCodLojaAndDateRef(codLoja, month).stream())
+            .toList();
+    }
+
+    private List<CommissionRate> collectRatesForEmployees(List<HrRecord> employees, List<CommissionRate> monthlyOverrides) {
+        Map<String, CommissionRate> rates = new LinkedHashMap<>();
+        Map<String, CommissionRate> overridesByKey = monthlyOverrides.stream()
+            .collect(Collectors.toMap(
+                rate -> rate.getCodMarca() + ":" + rate.getCodCargo(),
+                Function.identity(),
+                (left, right) -> right,
+                LinkedHashMap::new
+            ));
+
+        for (HrRecord employee : employees) {
+            String key = employee.getCodMarca() + ":" + employee.getCodCargo();
+            if (rates.containsKey(key)) {
+                continue;
+            }
+            if (overridesByKey.containsKey(key)) {
+                rates.put(key, overridesByKey.get(key));
+                continue;
+            }
+
+            CommissionRate rate = rateRepo
+                .findFirstByCodMarcaAndCodCargoAndIsVigenteTrueAndDeletedAtNullOrderByVersaoDesc(employee.getCodMarca(), employee.getCodCargo())
+                .orElseThrow(() -> new CommissionRateNotFoundException(
+                    "Commission rate not found: cod_marca=" + employee.getCodMarca()
+                        + " cod_cargo=" + employee.getCodCargo()));
+            rates.put(key, rate);
+        }
+        return List.copyOf(rates.values());
+    }
+
+    private List<CommissionRate> collectMonthlyOverridesForEmployees(List<HrRecord> employees, LocalDate month) {
+        var employeeKeys = employees.stream()
+            .map(employee -> employee.getCodMarca() + ":" + employee.getCodCargo())
+            .collect(Collectors.toSet());
+
+        List<CommissionRate> monthRates = rateRepo.findByDataAndIsVigenteTrueAndDeletedAtNull(month);
+        if (monthRates == null) {
+            monthRates = List.of();
+        }
+
+        return monthRates.stream()
+            .filter(rate -> rate.getCodMarca() != null && rate.getCodCargo() != null)
+            .filter(rate -> employeeKeys.contains(rate.getCodMarca() + ":" + rate.getCodCargo()))
+            .toList();
+    }
+
+    private List<CommissionResult> mapAiResults(
+            List<AiCommissionResult> aiResults,
+            List<HrRecord> employees,
+            LocalDate month) {
+        Map<String, HrRecord> employeesByMatricula = employees.stream()
+            .collect(Collectors.toMap(HrRecord::getMatricula, Function.identity(), (left, right) -> left));
+
+        return aiResults.stream()
+            .map(result -> mapAiResult(result, employeesByMatricula, month))
+            .toList();
+    }
+
+    private CommissionResult mapAiResult(
+            AiCommissionResult result,
+            Map<String, HrRecord> employeesByMatricula,
+            LocalDate month) {
+        HrRecord employee = employeesByMatricula.get(result.matricula());
+        if (employee == null) {
+            throw new IllegalStateException("AI returned unknown matricula: " + result.matricula());
+        }
+
+        double totalBonuses = result.bonus();
+        List<String> bonuses = totalBonuses == 0.0
+            ? List.of()
+            : List.of("AI_BONUS=" + totalBonuses);
+
+        return new CommissionResult(
+            result.matricula(),
             month,
-            CommissionTargetType.BRAND,
-            String.valueOf(command.codMarca()),
-            items
+            employee,
+            result.baseVendas(),
+            result.percComissao(),
+            result.valorComissaoBruto(),
+            bonuses,
+            totalBonuses,
+            result.valorFinal(),
+            "IA_COMMISSION_ALGORITHM",
+            "Calculated by API_6_ML /commission-algorithm"
         );
+    }
+
+    private String resolveTargetId(CommissionCalculationCommand command) {
+        return switch (command.targetType()) {
+            case EMPLOYEE -> command.matricula();
+            case STORE -> String.valueOf(command.codLoja());
+            case BRAND -> String.valueOf(command.codMarca());
+        };
     }
 
     private CommissionResult calculateEmployee(HrRecord hr, LocalDate month) {
@@ -124,7 +231,7 @@ public class CommissionServiceImpl implements CommissionService {
         List<MonthlyException> exceptions = exceptionRepo.findByYearMonth(month);
         double adjustedStoreSales = resolveStoreSales(hr, storeSales, exceptions, month);
 
-        CommissionRate rate = rateRepo.findActiveLatestByCodMarcaAndCodCargo(hr.getCodMarca(), hr.getCodCargo())
+        CommissionRate rate = rateRepo.findFirstByCodMarcaAndCodCargoAndIsVigenteTrueAndDeletedAtNullOrderByVersaoDesc(hr.getCodMarca(), hr.getCodCargo())
             .orElseThrow(() -> new CommissionRateNotFoundException(
                 "Commission rate not found: cod_marca=" + hr.getCodMarca()
                     + " cod_cargo=" + hr.getCodCargo()));

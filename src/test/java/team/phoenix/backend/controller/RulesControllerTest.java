@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import team.phoenix.backend.domain.model.CommissionRate;
 import team.phoenix.backend.domain.model.ExceptionType;
 import team.phoenix.backend.domain.model.MonthlyException;
+import team.phoenix.backend.service.GeneratedRuleResult;
 import team.phoenix.backend.service.RulesService;
 
 @WebMvcTest(RulesController.class)
@@ -184,6 +185,34 @@ class RulesControllerTest {
                 .content("{\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.025}"))
             .andExpect(status().isBadRequest())
             .andExpect(content().string("Erro ao criar regra: codMarca is required"));
+    }
+
+    @Test void generateRule_fromNaturalLanguage_returnsCreatedObjects() throws Exception {
+        var rate = CommissionRate.builder()
+            .id("rate-1")
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR")
+            .pctComiss(0.05)
+            .data(LocalDate.of(2026, 5, 1))
+            .textoOriginal("Criar regra de 5%")
+            .explicacao("Regra gerada pela IA")
+            .versao(1)
+            .isVigente(true)
+            .createdAt(LocalDateTime.now())
+            .build();
+        when(rulesService.generateFromNaturalLanguage("Criar regra de 5%"))
+            .thenReturn(new GeneratedRuleResult("override", "Regra gerada pela IA", List.of(rate), List.of()));
+
+        mockMvc.perform(post("/api/rules/generate")
+                .contentType("application/json")
+                .content("{\"prompt\":\"Criar regra de 5%\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tipo").value("override"))
+            .andExpect(jsonPath("$.justificativa").value("Regra gerada pela IA"))
+            .andExpect(jsonPath("$.rules[0].id").value("rate-1"))
+            .andExpect(jsonPath("$.rules[0].textoOriginal").value("Criar regra de 5%"));
     }
 
     @Test void updateRate_withValidData_returnsOk() throws Exception {

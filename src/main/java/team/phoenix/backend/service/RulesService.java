@@ -46,6 +46,13 @@ public interface RulesService {
     CommissionRate createRate(CommissionRate rule);
 
     /**
+     * Gera regra a partir de linguagem natural usando a IA e persiste o resultado.
+     * @param prompt pedido em linguagem natural
+     * @return objetos criados a partir da resposta da IA
+     */
+    GeneratedRuleResult generateFromNaturalLanguage(String prompt);
+
+    /**
      * Atualiza uma regra existente, criando uma nova versão
      * @param id ID da regra
      * @param updatedRule dados atualizados

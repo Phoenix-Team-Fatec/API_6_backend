@@ -18,8 +18,11 @@ import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.CommissionRate;
 import team.phoenix.backend.domain.model.ExceptionType;
 import team.phoenix.backend.domain.model.MonthlyException;
+import team.phoenix.backend.domain.model.RateType;
+import team.phoenix.backend.domain.repository.BrandRepository;
 import team.phoenix.backend.domain.repository.CommissionRateRepository;
 import team.phoenix.backend.domain.repository.MonthlyExceptionRepository;
+import team.phoenix.backend.domain.repository.PositionRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +30,9 @@ public class RulesServiceImpl implements RulesService {
 
     private final CommissionRateRepository rateRepo;
     private final MonthlyExceptionRepository exceptionRepo;
+    private final BrandRepository brandRepository;
+    private final PositionRepository positionRepository;
+    private final AiIntegrationClient aiIntegrationClient;
     private final AuditLogService auditLogService;
 
     @Override
@@ -39,8 +45,7 @@ public class RulesServiceImpl implements RulesService {
         List<CommissionRate> rates;
 
         if (codMarca != null && codCargo != null) {
-            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
-                .map(List::of).orElse(List.of());
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo);
         } else if (codMarca != null) {
             rates = rateRepo.findByCodMarca(codMarca);
         } else if (codCargo != null) {
@@ -67,8 +72,7 @@ public class RulesServiceImpl implements RulesService {
         List<CommissionRate> rates;
 
         if (codMarca != null && codCargo != null) {
-            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
-                .map(List::of).orElse(List.of());
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo);
         } else if (codMarca != null) {
             rates = rateRepo.findByCodMarca(codMarca);
         } else if (codCargo != null) {
@@ -91,8 +95,7 @@ public class RulesServiceImpl implements RulesService {
         List<CommissionRate> rates;
 
         if (codMarca != null && codCargo != null) {
-            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
-                .map(List::of).orElse(List.of());
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo);
         } else if (codMarca != null) {
             rates = rateRepo.findByCodMarca(codMarca);
         } else if (codCargo != null) {
@@ -145,6 +148,135 @@ public class RulesServiceImpl implements RulesService {
         CommissionRate saved = rateRepo.save(rule);
         recordRateAudit(AuditAction.CREATE, saved != null ? saved : rule, "Regra de comissao criada");
         return saved;
+    }
+
+    @Override
+    public GeneratedRuleResult generateFromNaturalLanguage(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            throw new IllegalArgumentException("prompt is required");
+        }
+
+        AiAgentResponse response = aiIntegrationClient.askAgent(prompt);
+        if (response == null || response.tipo() == null) {
+            throw new IllegalArgumentException("AI returned an empty response");
+        }
+
+        if ("override".equals(response.tipo())) {
+            return persistGeneratedOverride(prompt, response);
+        }
+        if ("intercorrencia".equals(response.tipo())) {
+            return persistGeneratedIntercorrencias(response);
+        }
+
+        throw new IllegalArgumentException("Unsupported AI response type: " + response.tipo());
+    }
+
+    private GeneratedRuleResult persistGeneratedOverride(String prompt, AiAgentResponse response) {
+        AiAgentOverride override = response.override();
+        if (override == null || override.percOverride() == null || override.percOverride().isEmpty()) {
+            throw new IllegalArgumentException("AI override response must include perc_override");
+        }
+
+        List<CommissionRate> created = override.percOverride().entrySet().stream()
+            .map(entry -> createRateFromAiOverride(prompt, response.justificativa(), override, entry.getKey(), entry.getValue()))
+            .toList();
+
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), created, List.of());
+    }
+
+    private CommissionRate createRateFromAiOverride(
+            String prompt,
+            String justificativa,
+            AiAgentOverride override,
+            String key,
+            Double percent) {
+        String[] parts = key.split(",");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid perc_override key: " + key);
+        }
+
+        Integer codMarca = Integer.valueOf(parts[0].trim());
+        Integer codCargo = Integer.valueOf(parts[1].trim());
+        CommissionRate rate = CommissionRate.builder()
+            .codMarca(codMarca)
+            .descrMarca(resolveBrandName(codMarca))
+            .codCargo(codCargo)
+            .descriCargo(resolvePositionName(codCargo))
+            .pctComiss(normalizePercent(percent))
+            .data(firstDayOfMonth(override.dataInicio()))
+            .textoOriginal(prompt)
+            .explicacao(justificativa)
+            .build();
+
+        return createRate(rate);
+    }
+
+    private GeneratedRuleResult persistGeneratedIntercorrencias(AiAgentResponse response) {
+        if (response.intercorrencias() == null || response.intercorrencias().isEmpty()) {
+            throw new IllegalArgumentException("AI intercorrencia response must include intercorrencias");
+        }
+
+        List<MonthlyException> created = response.intercorrencias().stream()
+            .map(this::createExceptionFromAiIntercorrencia)
+            .toList();
+
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created);
+    }
+
+    private MonthlyException createExceptionFromAiIntercorrencia(AiAgentIntercorrencia intercorrencia) {
+        MonthlyException exception = MonthlyException.builder()
+            .yearMonth(firstDayOfMonth(intercorrencia.vigenciaInicio()))
+            .matricula(intercorrencia.matricula())
+            .startDate(intercorrencia.vigenciaInicio())
+            .endDate(intercorrencia.vigenciaFim())
+            .build();
+
+        switch (intercorrencia.tipo()) {
+            case "bonus_fixo", "admissao_bonus" -> {
+                exception.setType(ExceptionType.BONUS_FIXED);
+                exception.setAmount(intercorrencia.valor());
+            }
+            case "bonus_venda" -> {
+                exception.setType(ExceptionType.SALES_BONUS_TIER);
+                exception.setAmount(intercorrencia.valor());
+            }
+            case "perc_bonus" -> {
+                exception.setType(ExceptionType.RATE_OVERRIDE);
+                exception.setRateType(RateType.ADDITIVE);
+                exception.setOverrideRate(intercorrencia.valor());
+            }
+            default -> throw new IllegalArgumentException("Unsupported AI intercorrencia type: " + intercorrencia.tipo());
+        }
+
+        return exceptionRepo.save(exception);
+    }
+
+    private String resolveBrandName(Integer codMarca) {
+        return brandRepository.findByCodigo(codMarca)
+            .map(brand -> brand.getNome())
+            .filter(name -> !name.isBlank())
+            .orElse("Marca " + codMarca);
+    }
+
+    private String resolvePositionName(Integer codCargo) {
+        return positionRepository.findByCodigo(codCargo)
+            .map(position -> position.getNome())
+            .filter(name -> !name.isBlank())
+            .orElse("Cargo " + codCargo);
+    }
+
+    private double normalizePercent(Double percent) {
+        if (percent == null) {
+            throw new IllegalArgumentException("Percent is required");
+        }
+        return percent > 1.0 ? percent / 100.0 : percent;
+    }
+
+    private LocalDate firstDayOfMonth(LocalDate date) {
+        if (date == null) {
+            return LocalDate.now().withDayOfMonth(1);
+        }
+        return date.withDayOfMonth(1);
     }
 
     @Override
