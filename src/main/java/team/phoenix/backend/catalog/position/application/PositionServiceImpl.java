@@ -1,12 +1,18 @@
 package team.phoenix.backend.catalog.position.application;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditLogEntry;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.Position;
 import team.phoenix.backend.domain.repository.PositionRepository;
 
@@ -15,6 +21,7 @@ import team.phoenix.backend.domain.repository.PositionRepository;
 public class PositionServiceImpl implements PositionService {
 
     private final PositionRepository positionRepository;
+    private final AuditLogService auditLogService;
 
     @Override
     public List<Position> listPositions(Integer codigo, String nome, String descricao) {
@@ -58,7 +65,15 @@ public class PositionServiceImpl implements PositionService {
         position.setCreatedAt(LocalDateTime.now());
         position.setUpdatedAt(null);
 
-        return positionRepository.save(position);
+        Position saved = positionRepository.save(position);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.CREATE,
+            AuditResourceType.POSITION,
+            saved.getId(),
+            "Cargo criado",
+            positionMetadata(saved)
+        ));
+        return saved;
     }
 
     @Override
@@ -94,15 +109,45 @@ public class PositionServiceImpl implements PositionService {
 
         current.setUpdatedAt(LocalDateTime.now());
 
-        return positionRepository.save(current);
+        Position saved = positionRepository.save(current);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.UPDATE,
+            AuditResourceType.POSITION,
+            saved.getId(),
+            "Cargo atualizado",
+            positionMetadata(saved)
+        ));
+        return saved;
     }
 
     @Override
     public void deletePosition(String id) {
-        if (positionRepository.findById(id).isEmpty()) {
+        Optional<Position> existing = positionRepository.findById(id);
+        if (existing.isEmpty()) {
             throw new IllegalArgumentException("Cargo não encontrado: " + id);
         }
         positionRepository.deleteById(id);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.DELETE,
+            AuditResourceType.POSITION,
+            id,
+            "Cargo removido",
+            positionMetadata(existing.get())
+        ));
+    }
+
+    private Map<String, Object> positionMetadata(Position position) {
+        var metadata = new HashMap<String, Object>();
+        putIfPresent(metadata, "codigo", position.getCodigo());
+        putIfPresent(metadata, "nome", position.getNome());
+        putIfPresent(metadata, "descricao", position.getDescricao());
+        return metadata;
+    }
+
+    private void putIfPresent(Map<String, Object> metadata, String key, Object value) {
+        if (value != null) {
+            metadata.put(key, value);
+        }
     }
 
     private void validateRequiredFields(Integer codigo, String nome, String descricao) {

@@ -2,6 +2,7 @@ package team.phoenix.backend.catalog.store.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.Store;
 import team.phoenix.backend.domain.repository.StoreRepository;
 
@@ -23,6 +27,7 @@ import team.phoenix.backend.domain.repository.StoreRepository;
 class StoreServiceTest {
 
     @Mock StoreRepository storeRepository;
+    @Mock AuditLogService auditLogService;
     @InjectMocks StoreServiceImpl service;
 
     @Test void listStores_noFilter_returnsAll() {
@@ -48,7 +53,7 @@ class StoreServiceTest {
     }
 
     @Test void createStore_withValidData_setsAuditAndSaves() {
-        var input = Store.builder().codigo(10).nome(" LOJA A ").descricao(" Centro ").build();
+        var input = Store.builder().id("1").codigo(10).nome(" LOJA A ").descricao(" Centro ").build();
         when(storeRepository.findByCodigo(10)).thenReturn(Optional.empty());
         when(storeRepository.save(input)).thenReturn(input);
 
@@ -59,6 +64,11 @@ class StoreServiceTest {
         assertThat(created.getCreatedAt()).isNotNull();
         assertThat(created.getUpdatedAt()).isNull();
         verify(storeRepository).save(input);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.CREATE
+                && entry.resourceType() == AuditResourceType.STORE
+                && entry.resourceId().equals("1")
+        ));
     }
 
     @Test void createStore_withDuplicatedCodigo_throwsConflict() {
@@ -97,6 +107,30 @@ class StoreServiceTest {
         assertThat(updated.getDescricao()).isEqualTo("Shopping");
         assertThat(updated.getUpdatedAt()).isNotNull();
         verify(storeRepository).save(current);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.UPDATE
+                && entry.resourceType() == AuditResourceType.STORE
+                && entry.resourceId().equals("1")
+        ));
+    }
+
+    @Test void deleteStore_whenFound_deletesAndRecordsAuditLog() {
+        var current = Store.builder()
+            .id("1")
+            .codigo(10)
+            .nome("LOJA A")
+            .descricao("Centro")
+            .build();
+        when(storeRepository.findById("1")).thenReturn(Optional.of(current));
+
+        service.deleteStore("1");
+
+        verify(storeRepository).deleteById("1");
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.DELETE
+                && entry.resourceType() == AuditResourceType.STORE
+                && entry.resourceId().equals("1")
+        ));
     }
 
     @Test void deleteStore_notFound_throwsNotFound() {

@@ -5,6 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.*;
 import team.phoenix.backend.domain.repository.*;
 import java.time.LocalDate;
@@ -19,6 +22,7 @@ class RulesServiceTest {
 
     @Mock CommissionRateRepository rateRepo;
     @Mock MonthlyExceptionRepository exceptionRepo;
+    @Mock AuditLogService auditLogService;
     @InjectMocks RulesServiceImpl service;
 
     @Test void createRate_rejectsMissingCodMarca() {
@@ -49,6 +53,21 @@ class RulesServiceTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("pctComiss must be greater than or equal to zero");
         verify(rateRepo, never()).save(any());
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test void createRate_withValidData_recordsAuditLog() {
+        var rate = validRate();
+        rate.setId("rate-1");
+        when(rateRepo.save(rate)).thenReturn(rate);
+
+        service.createRate(rate);
+
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.CREATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("rate-1")
+        ));
     }
 
     @Test void createRate_rejectsBlankDescriptions() {
@@ -193,6 +212,7 @@ class RulesServiceTest {
             .pctComiss(0.03)
             .isVigente(false)
             .build();
+        when(rateRepo.save(current)).thenReturn(current);
 
         service.updateRate("123", updated);
 
@@ -224,6 +244,11 @@ class RulesServiceTest {
         assertThat(previous.getIsVigente()).isTrue();
         assertThat(previous.getDeletedAt()).isNull();
         verify(rateRepo).save(current);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.UPDATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void activateRate_whenNotDeleted_reattivatesRule() {
@@ -233,11 +258,17 @@ class RulesServiceTest {
             .deletedAt(null)
             .build();
         when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+        when(rateRepo.save(rate)).thenReturn(rate);
 
         service.activateRate("123");
 
         assertThat(rate.getIsVigente()).isTrue();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.ACTIVATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void activateRate_whenDeleted_throwsIllegalStateException() {
@@ -260,12 +291,18 @@ class RulesServiceTest {
             .isVigente(true)
             .build();
         when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+        when(rateRepo.save(rate)).thenReturn(rate);
 
         service.deactivateRate("123");
 
         assertThat(rate.getIsVigente()).isFalse();
         assertThat(rate.getDeletedAt()).isNull();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.DEACTIVATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void softDeleteRate_whenFound_marksAsDeletedAndInactive() {
@@ -274,12 +311,18 @@ class RulesServiceTest {
             .isVigente(true)
             .build();
         when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+        when(rateRepo.save(rate)).thenReturn(rate);
 
         service.softDeleteRate("123");
 
         assertThat(rate.getIsVigente()).isFalse();
         assertThat(rate.getDeletedAt()).isNotNull();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.SOFT_DELETE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void restoreRate_whenDeleted_recoversWithoutActivating() {
@@ -289,12 +332,18 @@ class RulesServiceTest {
             .deletedAt(LocalDateTime.now())
             .build();
         when(rateRepo.findById("123")).thenReturn(Optional.of(rate));
+        when(rateRepo.save(rate)).thenReturn(rate);
 
         service.restoreRate("123");
 
         assertThat(rate.getDeletedAt()).isNull();
         assertThat(rate.getIsVigente()).isFalse();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.RESTORE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void restoreRate_whenNotDeleted_throwsIllegalStateException() {
@@ -346,6 +395,7 @@ class RulesServiceTest {
             .versoesAnteriores(new java.util.ArrayList<>(List.of(previous)))
             .build();
         when(rateRepo.findById("123")).thenReturn(Optional.of(current));
+        when(rateRepo.save(current)).thenReturn(current);
 
         service.rollbackRate("123");
 
@@ -361,6 +411,11 @@ class RulesServiceTest {
         assertThat(current.getIsVigente()).isTrue();
         assertThat(current.getVersoesAnteriores()).isEmpty();
         verify(rateRepo).save(current);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.ROLLBACK
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void rollbackRate_whenNoPreviousVersion_isNoOp() {
@@ -374,6 +429,7 @@ class RulesServiceTest {
         service.rollbackRate("123");
 
         verify(rateRepo, never()).save(any());
+        verifyNoInteractions(auditLogService);
     }
 
     private CommissionRate validRate() {

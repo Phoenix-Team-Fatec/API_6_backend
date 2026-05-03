@@ -1,7 +1,9 @@
 package team.phoenix.backend.employee.application;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -10,6 +12,10 @@ import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditLogEntry;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.Funcionario;
 import team.phoenix.backend.domain.model.HrRecord;
 import team.phoenix.backend.domain.repository.FuncionarioRepository;
@@ -22,6 +28,7 @@ public class FuncionarioServiceImpl implements FuncionarioService {
 
     private final FuncionarioRepository funcionarioRepository;
     private final HrRecordRepository hrRecordRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * Lista todos os funcionários ativos sem repetição
@@ -58,6 +65,13 @@ public class FuncionarioServiceImpl implements FuncionarioService {
             funcionario.setAtivo(false);
             funcionario.setDeletedAt(new Date());
             funcionarioRepository.save(funcionario);
+            auditLogService.record(new AuditLogEntry(
+                AuditAction.SOFT_DELETE,
+                AuditResourceType.FUNCIONARIO,
+                id,
+                "Funcionário removido",
+                funcionarioMetadata(funcionario)
+            ));
             log.info("Funcionário {} marcado como deletado", id);
         }
     }
@@ -81,6 +95,13 @@ public class FuncionarioServiceImpl implements FuncionarioService {
             funcionario.setAtivo(true);
             funcionario.setDeletedAt(null);
             funcionarioRepository.save(funcionario);
+            auditLogService.record(new AuditLogEntry(
+                AuditAction.RESTORE,
+                AuditResourceType.FUNCIONARIO,
+                id,
+                "Funcionário reativado",
+                funcionarioMetadata(funcionario)
+            ));
             log.info("Funcionário {} reativado", id);
         }
     }
@@ -136,6 +157,27 @@ public class FuncionarioServiceImpl implements FuncionarioService {
         
         // Salva todos os funcionários consolidados
         funcionarioRepository.saveAll(funcionariosConsolidados);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.CONSOLIDATE,
+            AuditResourceType.FUNCIONARIO,
+            "hr_records",
+            "Funcionários consolidados a partir de hr_records",
+            Map.of("total", funcionariosConsolidados.size())
+        ));
         log.info("Consolidação concluída: {} funcionários salvos", funcionariosConsolidados.size());
+    }
+
+    private Map<String, Object> funcionarioMetadata(Funcionario funcionario) {
+        var metadata = new HashMap<String, Object>();
+        putIfPresent(metadata, "matricula", funcionario.getMatricula());
+        putIfPresent(metadata, "ativo", funcionario.isAtivo());
+        putIfPresent(metadata, "deletedAt", funcionario.getDeletedAt());
+        return metadata;
+    }
+
+    private void putIfPresent(Map<String, Object> metadata, String key, Object value) {
+        if (value != null) {
+            metadata.put(key, value);
+        }
     }
 }
