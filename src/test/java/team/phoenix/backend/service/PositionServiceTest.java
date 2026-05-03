@@ -2,6 +2,7 @@ package team.phoenix.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.Position;
 import team.phoenix.backend.domain.repository.PositionRepository;
 
@@ -23,6 +27,7 @@ import team.phoenix.backend.domain.repository.PositionRepository;
 class PositionServiceTest {
 
     @Mock PositionRepository positionRepository;
+    @Mock AuditLogService auditLogService;
     @InjectMocks PositionServiceImpl service;
 
     @Test void listPositions_noFilter_returnsAll() {
@@ -59,6 +64,12 @@ class PositionServiceTest {
         assertThat(created.getCreatedAt()).isNotNull();
         assertThat(created.getUpdatedAt()).isNull();
         verify(positionRepository).save(input);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.CREATE
+                && entry.resourceType() == AuditResourceType.POSITION
+                && entry.summary().equals("Cargo criado")
+                && entry.metadata().get("codigo").equals(10)
+        ));
     }
 
     @Test void createPosition_withDuplicatedCodigo_throwsConflict() {
@@ -97,6 +108,11 @@ class PositionServiceTest {
         assertThat(updated.getDescricao()).isEqualTo("Gestão");
         assertThat(updated.getUpdatedAt()).isNotNull();
         verify(positionRepository).save(current);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.UPDATE
+                && entry.resourceType() == AuditResourceType.POSITION
+                && entry.resourceId().equals("1")
+        ));
     }
 
     @Test void deletePosition_notFound_throwsNotFound() {

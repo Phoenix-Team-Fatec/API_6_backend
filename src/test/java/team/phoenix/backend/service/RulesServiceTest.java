@@ -5,6 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.*;
 import team.phoenix.backend.domain.repository.*;
 import java.time.LocalDate;
@@ -19,6 +22,7 @@ class RulesServiceTest {
 
     @Mock CommissionRateRepository rateRepo;
     @Mock MonthlyExceptionRepository exceptionRepo;
+    @Mock AuditLogService auditLogService;
     @InjectMocks RulesServiceImpl service;
 
     @Test void createRate_rejectsMissingCodMarca() {
@@ -224,6 +228,11 @@ class RulesServiceTest {
         assertThat(previous.getIsVigente()).isTrue();
         assertThat(previous.getDeletedAt()).isNull();
         verify(rateRepo).save(current);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.UPDATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void activateRate_whenNotDeleted_reattivatesRule() {
@@ -266,6 +275,11 @@ class RulesServiceTest {
         assertThat(rate.getIsVigente()).isFalse();
         assertThat(rate.getDeletedAt()).isNull();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.DEACTIVATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void softDeleteRate_whenFound_marksAsDeletedAndInactive() {
@@ -280,6 +294,11 @@ class RulesServiceTest {
         assertThat(rate.getIsVigente()).isFalse();
         assertThat(rate.getDeletedAt()).isNotNull();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.SOFT_DELETE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void restoreRate_whenDeleted_recoversWithoutActivating() {

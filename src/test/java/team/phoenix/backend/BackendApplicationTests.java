@@ -14,6 +14,7 @@ class BackendApplicationTests {
     @MockitoBean MonthlyExceptionRepository exceptionRepo;
     @MockitoBean BrandRepository brandRepository;
     @MockitoBean StoreRepository storeRepository;
+    @MockitoBean AuditEventRepository auditEventRepository;
 
     @Test
     void contextLoads() {

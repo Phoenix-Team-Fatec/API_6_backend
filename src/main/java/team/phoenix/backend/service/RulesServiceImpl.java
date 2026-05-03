@@ -3,12 +3,18 @@ package team.phoenix.backend.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditLogEntry;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.CommissionRate;
 import team.phoenix.backend.domain.model.ExceptionType;
 import team.phoenix.backend.domain.model.MonthlyException;
@@ -21,6 +27,7 @@ public class RulesServiceImpl implements RulesService {
 
     private final CommissionRateRepository rateRepo;
     private final MonthlyExceptionRepository exceptionRepo;
+    private final AuditLogService auditLogService;
 
     @Override
     public List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente) {
@@ -135,7 +142,9 @@ public class RulesServiceImpl implements RulesService {
             rule.setExplicacao(PseudoCodeGenerator.generate(rule));
         }
 
-        return rateRepo.save(rule);
+        CommissionRate saved = rateRepo.save(rule);
+        recordRateAudit(AuditAction.CREATE, saved != null ? saved : rule, "Regra de comissao criada");
+        return saved;
     }
 
     @Override
@@ -211,7 +220,9 @@ public class RulesServiceImpl implements RulesService {
             current.setExplicacao(updatedRule.getExplicacao());
         }
 
-        return rateRepo.save(current);
+        CommissionRate saved = rateRepo.save(current);
+        recordRateAudit(AuditAction.UPDATE, current, "Regra de comissao atualizada");
+        return saved;
     }
 
     @Override
@@ -221,6 +232,7 @@ public class RulesServiceImpl implements RulesService {
             CommissionRate r = rate.get();
             r.setIsVigente(false);
             rateRepo.save(r);
+            recordRateAudit(AuditAction.DEACTIVATE, r, "Regra de comissao desativada");
         } else {
             throw new IllegalArgumentException("Regra não encontrada: " + id);
         }
@@ -234,6 +246,7 @@ public class RulesServiceImpl implements RulesService {
             r.setIsVigente(false);
             r.setDeletedAt(LocalDateTime.now());
             rateRepo.save(r);
+            recordRateAudit(AuditAction.SOFT_DELETE, r, "Regra de comissao removida");
         } else {
             throw new IllegalArgumentException("Regra não encontrada: " + id);
         }
@@ -253,6 +266,7 @@ public class RulesServiceImpl implements RulesService {
 
         r.setIsVigente(true);
         rateRepo.save(r);
+        recordRateAudit(AuditAction.ACTIVATE, r, "Regra de comissao ativada");
     }
 
     @Override
@@ -269,6 +283,7 @@ public class RulesServiceImpl implements RulesService {
 
         r.setDeletedAt(null);
         rateRepo.save(r);
+        recordRateAudit(AuditAction.RESTORE, r, "Regra de comissao restaurada");
     }
 
     @Override
@@ -302,6 +317,7 @@ public class RulesServiceImpl implements RulesService {
         current.setDeletedAt(previous.getDeletedAt());
 
         rateRepo.save(current);
+        recordRateAudit(AuditAction.ROLLBACK, current, "Regra de comissao revertida");
     }
 
     @Override
@@ -351,6 +367,33 @@ public class RulesServiceImpl implements RulesService {
         }
         if (rule.getDescriCargo() != null && rule.getDescriCargo().isBlank()) {
             throw new IllegalArgumentException("descriCargo is required");
+        }
+    }
+
+    private void recordRateAudit(AuditAction action, CommissionRate rate, String summary) {
+        auditLogService.record(new AuditLogEntry(
+            action,
+            AuditResourceType.COMMISSION_RATE,
+            rate.getId(),
+            summary,
+            rateMetadata(rate)
+        ));
+    }
+
+    private Map<String, Object> rateMetadata(CommissionRate rate) {
+        var metadata = new HashMap<String, Object>();
+        putIfPresent(metadata, "codMarca", rate.getCodMarca());
+        putIfPresent(metadata, "codCargo", rate.getCodCargo());
+        putIfPresent(metadata, "versao", rate.getVersao());
+        putIfPresent(metadata, "pctComiss", rate.getPctComiss());
+        putIfPresent(metadata, "isVigente", rate.getIsVigente());
+        putIfPresent(metadata, "deletedAt", rate.getDeletedAt());
+        return metadata;
+    }
+
+    private void putIfPresent(Map<String, Object> metadata, String key, Object value) {
+        if (value != null) {
+            metadata.put(key, value);
         }
     }
 }
