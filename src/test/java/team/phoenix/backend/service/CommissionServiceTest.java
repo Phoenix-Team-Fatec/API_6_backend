@@ -30,7 +30,16 @@ class CommissionServiceTest {
     @Test void simulate_delegatesToCalculator() {
         var hr = HrRecord.builder().matricula("M1").codMarca(10).codLoja(35).codCargo(100)
             .dataRef(JULY).dataAdmiss(LocalDate.of(2020,1,1)).build();
-        var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).build();
+        var rate = CommissionRate.builder()
+            .id("rate-1")
+            .nomeRegra("Comissao PRETO Julho")
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR")
+            .pctComiss(0.025)
+            .textoOriginal("Regra PRETO")
+            .build();
         var sale = SalesRecord.builder().matricula("M1").vlrVenda(5000.0).build();
         var expected = new CommissionResult("M1", JULY, hr,5000.0,0.025,125.0,List.of(),0.0,125.0,"GERAL","");
 
@@ -67,7 +76,16 @@ class CommissionServiceTest {
         var hr = HrRecord.builder().matricula("M1").codMarca(10).codLoja(35).codCargo(100)
             .descrMarca("PRETO").descrLoja("LOJA-35").descriCargo("VENDEDOR")
             .dataRef(JULY).dataAdmiss(LocalDate.of(2020,1,1)).build();
-        var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).build();
+        var rate = CommissionRate.builder()
+            .id("rate-1")
+            .nomeRegra("Comissao PRETO Julho")
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR")
+            .pctComiss(0.025)
+            .textoOriginal("Regra PRETO")
+            .build();
         var sale = SalesRecord.builder().matricula("M1").codMarca(10).codLoja(35).vlrVenda(5000.0).build();
 
         when(hrRepo.findByMatriculaAndDataRef("M1", JULY)).thenReturn(Optional.of(hr));
@@ -90,6 +108,11 @@ class CommissionServiceTest {
         assertThat(response.items().get(0).finalCommission()).isEqualTo(125.0);
         assertThat(response.totalCommission()).isEqualTo(125.0);
         assertThat(response.appliedRules()).containsExactly("IA_COMMISSION_ALGORITHM");
+        assertThat(response.appliedRuleDetails()).hasSize(1);
+        assertThat(response.appliedRuleDetails().get(0).id()).isEqualTo("rate-1");
+        assertThat(response.appliedRuleDetails().get(0).nomeRegra()).isEqualTo("Comissao PRETO Julho");
+        assertThat(response.appliedRuleDetails().get(0).tipo()).isEqualTo("COMMISSION_RATE");
+        assertThat(response.appliedRuleDetails().get(0).descricao()).isEqualTo("Regra PRETO");
 
         var requestCaptor = org.mockito.ArgumentCaptor.forClass(AiCommissionRequest.class);
         verify(aiClient).calculate(requestCaptor.capture(), eq(2025), eq(7));

@@ -5,6 +5,7 @@ import java.util.List;
 
 import team.phoenix.backend.service.CommissionCalculationResult;
 import team.phoenix.backend.service.CommissionTargetType;
+import team.phoenix.backend.service.AppliedRuleDetail;
 
 public record CommissionCalculationResponse(
     LocalDate month,
@@ -12,7 +13,8 @@ public record CommissionCalculationResponse(
     String targetId,
     List<CommissionResponse> items,
     double totalCommission,
-    List<String> appliedRules
+    List<String> appliedRules,
+    List<AppliedRuleDetail> appliedRuleDetails
 ) {
     public static CommissionCalculationResponse from(CommissionCalculationResult result) {
         List<CommissionResponse> items = result.items().stream()
@@ -24,7 +26,8 @@ public record CommissionCalculationResponse(
             result.targetId(),
             items,
             result.totalCommission(),
-            result.appliedRules()
+            result.appliedRules(),
+            result.appliedRuleDetails()
         );
     }
 }

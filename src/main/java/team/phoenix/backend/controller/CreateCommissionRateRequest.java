@@ -5,6 +5,7 @@ import java.time.YearMonth;
 
 // DTO para criar/editar regra de comissão
 public record CreateCommissionRateRequest(
+    String nomeRegra,
     Integer codMarca,
     String descrMarca,
     Integer codCargo,

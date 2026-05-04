@@ -65,7 +65,8 @@ public class CommissionServiceImpl implements CommissionService {
             month,
             command.targetType(),
             resolveTargetId(command),
-            items
+            items,
+            mapAppliedRuleDetails(rates)
         );
     }
 
@@ -168,6 +169,28 @@ public class CommissionServiceImpl implements CommissionService {
             .filter(rate -> rate.getCodMarca() != null && rate.getCodCargo() != null)
             .filter(rate -> employeeKeys.contains(rate.getCodMarca() + ":" + rate.getCodCargo()))
             .toList();
+    }
+
+    private List<AppliedRuleDetail> mapAppliedRuleDetails(List<CommissionRate> rates) {
+        return rates.stream()
+            .map(this::mapAppliedRuleDetail)
+            .toList();
+    }
+
+    private AppliedRuleDetail mapAppliedRuleDetail(CommissionRate rate) {
+        return new AppliedRuleDetail(
+            rate.getId(),
+            rate.getNomeRegra(),
+            "COMMISSION_RATE",
+            resolveRateDescription(rate)
+        );
+    }
+
+    private String resolveRateDescription(CommissionRate rate) {
+        if (rate.getTextoOriginal() != null && !rate.getTextoOriginal().isBlank()) {
+            return rate.getTextoOriginal();
+        }
+        return rate.getExplicacao();
     }
 
     private List<CommissionResult> mapAiResults(

@@ -11,6 +11,7 @@ import team.phoenix.backend.service.CommissionCalculationResult;
 import team.phoenix.backend.service.CommissionResult;
 import team.phoenix.backend.service.CommissionService;
 import team.phoenix.backend.service.CommissionTargetType;
+import team.phoenix.backend.service.AppliedRuleDetail;
 import team.phoenix.backend.service.exception.CommissionRateNotFoundException;
 import team.phoenix.backend.service.exception.EmployeeNotFoundException;
 import team.phoenix.backend.service.exception.InvalidCommissionRequestException;
@@ -65,7 +66,9 @@ class CommissionControllerTest {
         var item = new CommissionResult("MATRIC-1", LocalDate.of(2025,7,1), hr,
             5000.0,0.025,125.0,List.of(),0.0,125.0,"GERAL","5000 x 0.025 = 125");
         var result = CommissionCalculationResult.from(LocalDate.of(2025,7,1),
-            CommissionTargetType.EMPLOYEE, "MATRIC-1", List.of(item));
+            CommissionTargetType.EMPLOYEE, "MATRIC-1", List.of(item), List.of(
+                new AppliedRuleDetail("rate-1", "Comissao PRETO Julho", "COMMISSION_RATE", "Regra PRETO")
+            ));
         when(commissionService.calculate(any())).thenReturn(result);
 
         mockMvc.perform(post("/api/commission/calculate")
@@ -76,7 +79,10 @@ class CommissionControllerTest {
             .andExpect(jsonPath("$.targetId").value("MATRIC-1"))
             .andExpect(jsonPath("$.items[0].matricula").value("MATRIC-1"))
             .andExpect(jsonPath("$.totalCommission").value(125.0))
-            .andExpect(jsonPath("$.appliedRules[0]").value("GERAL"));
+            .andExpect(jsonPath("$.appliedRules[0]").value("GERAL"))
+            .andExpect(jsonPath("$.appliedRuleDetails[0].id").value("rate-1"))
+            .andExpect(jsonPath("$.appliedRuleDetails[0].nomeRegra").value("Comissao PRETO Julho"))
+            .andExpect(jsonPath("$.appliedRuleDetails[0].tipo").value("COMMISSION_RATE"));
     }
 
     @Test void calculate_storeTarget_returnsOk() throws Exception {
