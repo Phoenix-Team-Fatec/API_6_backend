@@ -3,17 +3,26 @@ package team.phoenix.backend.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditLogEntry;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.CommissionRate;
 import team.phoenix.backend.domain.model.ExceptionType;
 import team.phoenix.backend.domain.model.MonthlyException;
+import team.phoenix.backend.domain.model.RateType;
+import team.phoenix.backend.domain.repository.BrandRepository;
 import team.phoenix.backend.domain.repository.CommissionRateRepository;
 import team.phoenix.backend.domain.repository.MonthlyExceptionRepository;
+import team.phoenix.backend.domain.repository.PositionRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +30,10 @@ public class RulesServiceImpl implements RulesService {
 
     private final CommissionRateRepository rateRepo;
     private final MonthlyExceptionRepository exceptionRepo;
+    private final BrandRepository brandRepository;
+    private final PositionRepository positionRepository;
+    private final AiIntegrationClient aiIntegrationClient;
+    private final AuditLogService auditLogService;
 
     @Override
     public List<CommissionRate> listRates(Integer codMarca, Integer codCargo, Boolean isVigente) {
@@ -32,8 +45,7 @@ public class RulesServiceImpl implements RulesService {
         List<CommissionRate> rates;
 
         if (codMarca != null && codCargo != null) {
-            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
-                .map(List::of).orElse(List.of());
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo);
         } else if (codMarca != null) {
             rates = rateRepo.findByCodMarca(codMarca);
         } else if (codCargo != null) {
@@ -60,8 +72,7 @@ public class RulesServiceImpl implements RulesService {
         List<CommissionRate> rates;
 
         if (codMarca != null && codCargo != null) {
-            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
-                .map(List::of).orElse(List.of());
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo);
         } else if (codMarca != null) {
             rates = rateRepo.findByCodMarca(codMarca);
         } else if (codCargo != null) {
@@ -84,8 +95,7 @@ public class RulesServiceImpl implements RulesService {
         List<CommissionRate> rates;
 
         if (codMarca != null && codCargo != null) {
-            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo)
-                .map(List::of).orElse(List.of());
+            rates = rateRepo.findByCodMarcaAndCodCargo(codMarca, codCargo);
         } else if (codMarca != null) {
             rates = rateRepo.findByCodMarca(codMarca);
         } else if (codCargo != null) {
@@ -109,6 +119,8 @@ public class RulesServiceImpl implements RulesService {
 
     @Override
     public CommissionRate createRate(CommissionRate rule) {
+        validateCreateRate(rule);
+
         // Preencher valores padrão
         if (rule.getVersao() == null || rule.getVersao() == 0) {
             rule.setVersao(1);
@@ -133,11 +145,144 @@ public class RulesServiceImpl implements RulesService {
             rule.setExplicacao(PseudoCodeGenerator.generate(rule));
         }
 
-        return rateRepo.save(rule);
+        CommissionRate saved = rateRepo.save(rule);
+        recordRateAudit(AuditAction.CREATE, saved != null ? saved : rule, "Regra de comissao criada");
+        return saved;
+    }
+
+    @Override
+    public GeneratedRuleResult generateFromNaturalLanguage(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            throw new IllegalArgumentException("prompt is required");
+        }
+
+        AiAgentResponse response = aiIntegrationClient.askAgent(prompt);
+        if (response == null || response.tipo() == null) {
+            throw new IllegalArgumentException("AI returned an empty response");
+        }
+
+        if ("override".equals(response.tipo())) {
+            return persistGeneratedOverride(prompt, response);
+        }
+        if ("intercorrencia".equals(response.tipo())) {
+            return persistGeneratedIntercorrencias(response);
+        }
+
+        throw new IllegalArgumentException("Unsupported AI response type: " + response.tipo());
+    }
+
+    private GeneratedRuleResult persistGeneratedOverride(String prompt, AiAgentResponse response) {
+        AiAgentOverride override = response.override();
+        if (override == null || override.percOverride() == null || override.percOverride().isEmpty()) {
+            throw new IllegalArgumentException("AI override response must include perc_override");
+        }
+
+        List<CommissionRate> created = override.percOverride().entrySet().stream()
+            .map(entry -> createRateFromAiOverride(prompt, response.justificativa(), override, entry.getKey(), entry.getValue()))
+            .toList();
+
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), created, List.of());
+    }
+
+    private CommissionRate createRateFromAiOverride(
+            String prompt,
+            String justificativa,
+            AiAgentOverride override,
+            String key,
+            Double percent) {
+        String[] parts = key.split(",");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid perc_override key: " + key);
+        }
+
+        Integer codMarca = Integer.valueOf(parts[0].trim());
+        Integer codCargo = Integer.valueOf(parts[1].trim());
+        CommissionRate rate = CommissionRate.builder()
+            .codMarca(codMarca)
+            .descrMarca(resolveBrandName(codMarca))
+            .codCargo(codCargo)
+            .descriCargo(resolvePositionName(codCargo))
+            .pctComiss(normalizePercent(percent))
+            .data(firstDayOfMonth(override.dataInicio()))
+            .textoOriginal(prompt)
+            .explicacao(justificativa)
+            .build();
+
+        return createRate(rate);
+    }
+
+    private GeneratedRuleResult persistGeneratedIntercorrencias(AiAgentResponse response) {
+        if (response.intercorrencias() == null || response.intercorrencias().isEmpty()) {
+            throw new IllegalArgumentException("AI intercorrencia response must include intercorrencias");
+        }
+
+        List<MonthlyException> created = response.intercorrencias().stream()
+            .map(this::createExceptionFromAiIntercorrencia)
+            .toList();
+
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created);
+    }
+
+    private MonthlyException createExceptionFromAiIntercorrencia(AiAgentIntercorrencia intercorrencia) {
+        MonthlyException exception = MonthlyException.builder()
+            .yearMonth(firstDayOfMonth(intercorrencia.vigenciaInicio()))
+            .matricula(intercorrencia.matricula())
+            .startDate(intercorrencia.vigenciaInicio())
+            .endDate(intercorrencia.vigenciaFim())
+            .build();
+
+        switch (intercorrencia.tipo()) {
+            case "bonus_fixo", "admissao_bonus" -> {
+                exception.setType(ExceptionType.BONUS_FIXED);
+                exception.setAmount(intercorrencia.valor());
+            }
+            case "bonus_venda" -> {
+                exception.setType(ExceptionType.SALES_BONUS_TIER);
+                exception.setAmount(intercorrencia.valor());
+            }
+            case "perc_bonus" -> {
+                exception.setType(ExceptionType.RATE_OVERRIDE);
+                exception.setRateType(RateType.ADDITIVE);
+                exception.setOverrideRate(intercorrencia.valor());
+            }
+            default -> throw new IllegalArgumentException("Unsupported AI intercorrencia type: " + intercorrencia.tipo());
+        }
+
+        return exceptionRepo.save(exception);
+    }
+
+    private String resolveBrandName(Integer codMarca) {
+        return brandRepository.findByCodigo(codMarca)
+            .map(brand -> brand.getNome())
+            .filter(name -> !name.isBlank())
+            .orElse("Marca " + codMarca);
+    }
+
+    private String resolvePositionName(Integer codCargo) {
+        return positionRepository.findByCodigo(codCargo)
+            .map(position -> position.getNome())
+            .filter(name -> !name.isBlank())
+            .orElse("Cargo " + codCargo);
+    }
+
+    private double normalizePercent(Double percent) {
+        if (percent == null) {
+            throw new IllegalArgumentException("Percent is required");
+        }
+        return percent > 1.0 ? percent / 100.0 : percent;
+    }
+
+    private LocalDate firstDayOfMonth(LocalDate date) {
+        if (date == null) {
+            return LocalDate.now().withDayOfMonth(1);
+        }
+        return date.withDayOfMonth(1);
     }
 
     @Override
     public CommissionRate updateRate(String id, CommissionRate updatedRule) {
+        validatePartialRateUpdate(updatedRule);
+
         Optional<CommissionRate> existing = rateRepo.findById(id);
         if (existing.isEmpty()) {
             throw new IllegalArgumentException("Regra não encontrada: " + id);
@@ -207,7 +352,9 @@ public class RulesServiceImpl implements RulesService {
             current.setExplicacao(updatedRule.getExplicacao());
         }
 
-        return rateRepo.save(current);
+        CommissionRate saved = rateRepo.save(current);
+        recordRateAudit(AuditAction.UPDATE, current, "Regra de comissao atualizada");
+        return saved;
     }
 
     @Override
@@ -217,6 +364,7 @@ public class RulesServiceImpl implements RulesService {
             CommissionRate r = rate.get();
             r.setIsVigente(false);
             rateRepo.save(r);
+            recordRateAudit(AuditAction.DEACTIVATE, r, "Regra de comissao desativada");
         } else {
             throw new IllegalArgumentException("Regra não encontrada: " + id);
         }
@@ -230,6 +378,7 @@ public class RulesServiceImpl implements RulesService {
             r.setIsVigente(false);
             r.setDeletedAt(LocalDateTime.now());
             rateRepo.save(r);
+            recordRateAudit(AuditAction.SOFT_DELETE, r, "Regra de comissao removida");
         } else {
             throw new IllegalArgumentException("Regra não encontrada: " + id);
         }
@@ -249,6 +398,7 @@ public class RulesServiceImpl implements RulesService {
 
         r.setIsVigente(true);
         rateRepo.save(r);
+        recordRateAudit(AuditAction.ACTIVATE, r, "Regra de comissao ativada");
     }
 
     @Override
@@ -265,6 +415,7 @@ public class RulesServiceImpl implements RulesService {
 
         r.setDeletedAt(null);
         rateRepo.save(r);
+        recordRateAudit(AuditAction.RESTORE, r, "Regra de comissao restaurada");
     }
 
     @Override
@@ -298,6 +449,7 @@ public class RulesServiceImpl implements RulesService {
         current.setDeletedAt(previous.getDeletedAt());
 
         rateRepo.save(current);
+        recordRateAudit(AuditAction.ROLLBACK, current, "Regra de comissao revertida");
     }
 
     @Override
@@ -312,5 +464,68 @@ public class RulesServiceImpl implements RulesService {
         if (type != null) return exceptionRepo.findByYearMonthAndType(yearMonth, type);
         if (matricula != null) return exceptionRepo.findByYearMonthAndMatricula(yearMonth, matricula);
         return exceptionRepo.findByYearMonth(yearMonth);
+    }
+
+    private void validateCreateRate(CommissionRate rule) {
+        if (rule == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+        if (rule.getCodMarca() == null) {
+            throw new IllegalArgumentException("codMarca is required");
+        }
+        if (rule.getCodCargo() == null) {
+            throw new IllegalArgumentException("codCargo is required");
+        }
+        if (rule.getPctComiss() == null || rule.getPctComiss() < 0) {
+            throw new IllegalArgumentException("pctComiss must be greater than or equal to zero");
+        }
+        if (rule.getDescrMarca() == null || rule.getDescrMarca().isBlank()) {
+            throw new IllegalArgumentException("descrMarca is required");
+        }
+        if (rule.getDescriCargo() == null || rule.getDescriCargo().isBlank()) {
+            throw new IllegalArgumentException("descriCargo is required");
+        }
+    }
+
+    private void validatePartialRateUpdate(CommissionRate rule) {
+        if (rule == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+        if (rule.getPctComiss() != null && rule.getPctComiss() < 0) {
+            throw new IllegalArgumentException("pctComiss must be greater than or equal to zero");
+        }
+        if (rule.getDescrMarca() != null && rule.getDescrMarca().isBlank()) {
+            throw new IllegalArgumentException("descrMarca is required");
+        }
+        if (rule.getDescriCargo() != null && rule.getDescriCargo().isBlank()) {
+            throw new IllegalArgumentException("descriCargo is required");
+        }
+    }
+
+    private void recordRateAudit(AuditAction action, CommissionRate rate, String summary) {
+        auditLogService.record(new AuditLogEntry(
+            action,
+            AuditResourceType.COMMISSION_RATE,
+            rate.getId(),
+            summary,
+            rateMetadata(rate)
+        ));
+    }
+
+    private Map<String, Object> rateMetadata(CommissionRate rate) {
+        var metadata = new HashMap<String, Object>();
+        putIfPresent(metadata, "codMarca", rate.getCodMarca());
+        putIfPresent(metadata, "codCargo", rate.getCodCargo());
+        putIfPresent(metadata, "versao", rate.getVersao());
+        putIfPresent(metadata, "pctComiss", rate.getPctComiss());
+        putIfPresent(metadata, "isVigente", rate.getIsVigente());
+        putIfPresent(metadata, "deletedAt", rate.getDeletedAt());
+        return metadata;
+    }
+
+    private void putIfPresent(Map<String, Object> metadata, String key, Object value) {
+        if (value != null) {
+            metadata.put(key, value);
+        }
     }
 }

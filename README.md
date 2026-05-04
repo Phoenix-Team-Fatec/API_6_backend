@@ -128,6 +128,7 @@ mvn test
 
 - `GET /health`: endpoint simples de healthcheck.
 - `GET /api/commission/simulate?matricula=<valor>&month=yyyy-MM`: simula o cálculo de comissão para um colaborador em um mês.
+- `POST /api/commission/calculate`: calcula comissao por funcionario, loja ou marca em um mes.
 - `GET /api/rules/commission-rates`: lista regras de comissão com filtros opcionais.
 - `GET /api/rules/commission-rates/trash`: lista regras removidas logicamente.
 - `GET /api/rules/{id}`: busca uma regra por id.
@@ -172,6 +173,14 @@ Simulação de comissão:
 
 ```bash
 curl "http://localhost:8080/api/commission/simulate?matricula=12345&month=2025-08"
+```
+
+Calculo de comissao por funcionario:
+
+```bash
+curl -X POST "http://localhost:8080/api/commission/calculate" \
+  -H "Content-Type: application/json" \
+  -d "{\"month\":\"2025-07\",\"targetType\":\"EMPLOYEE\",\"matricula\":\"MATRIC-1\"}"
 ```
 
 ## Comandos disponíveis

@@ -1,12 +1,18 @@
 package team.phoenix.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditLogEntry;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.Brand;
 import team.phoenix.backend.domain.repository.BrandRepository;
 
@@ -15,6 +21,7 @@ import team.phoenix.backend.domain.repository.BrandRepository;
 public class BrandServiceImpl implements BrandService {
 
     private final BrandRepository brandRepository;
+    private final AuditLogService auditLogService;
 
     @Override
     public List<Brand> listBrands(Integer codigo, String nome, String descricao) {
@@ -58,7 +65,15 @@ public class BrandServiceImpl implements BrandService {
         brand.setCreatedAt(LocalDateTime.now());
         brand.setUpdatedAt(null);
 
-        return brandRepository.save(brand);
+        Brand saved = brandRepository.save(brand);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.CREATE,
+            AuditResourceType.BRAND,
+            saved.getId(),
+            "Marca criada",
+            brandMetadata(saved)
+        ));
+        return saved;
     }
 
     @Override
@@ -94,15 +109,45 @@ public class BrandServiceImpl implements BrandService {
 
         current.setUpdatedAt(LocalDateTime.now());
 
-        return brandRepository.save(current);
+        Brand saved = brandRepository.save(current);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.UPDATE,
+            AuditResourceType.BRAND,
+            saved.getId(),
+            "Marca atualizada",
+            brandMetadata(saved)
+        ));
+        return saved;
     }
 
     @Override
     public void deleteBrand(String id) {
-        if (brandRepository.findById(id).isEmpty()) {
+        Optional<Brand> existing = brandRepository.findById(id);
+        if (existing.isEmpty()) {
             throw new IllegalArgumentException("Marca não encontrada: " + id);
         }
         brandRepository.deleteById(id);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.DELETE,
+            AuditResourceType.BRAND,
+            id,
+            "Marca removida",
+            brandMetadata(existing.get())
+        ));
+    }
+
+    private Map<String, Object> brandMetadata(Brand brand) {
+        var metadata = new HashMap<String, Object>();
+        putIfPresent(metadata, "codigo", brand.getCodigo());
+        putIfPresent(metadata, "nome", brand.getNome());
+        putIfPresent(metadata, "descricao", brand.getDescricao());
+        return metadata;
+    }
+
+    private void putIfPresent(Map<String, Object> metadata, String key, Object value) {
+        if (value != null) {
+            metadata.put(key, value);
+        }
     }
 
     private void validateRequiredFields(Integer codigo, String nome, String descricao) {

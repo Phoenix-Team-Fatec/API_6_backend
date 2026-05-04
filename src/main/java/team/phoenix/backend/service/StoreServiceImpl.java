@@ -1,12 +1,18 @@
 package team.phoenix.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditLogEntry;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.Store;
 import team.phoenix.backend.domain.repository.StoreRepository;
 
@@ -15,6 +21,7 @@ import team.phoenix.backend.domain.repository.StoreRepository;
 public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
+    private final AuditLogService auditLogService;
 
     @Override
     public List<Store> listStores(Integer codigo, String nome, String descricao) {
@@ -58,7 +65,15 @@ public class StoreServiceImpl implements StoreService {
         store.setCreatedAt(LocalDateTime.now());
         store.setUpdatedAt(null);
 
-        return storeRepository.save(store);
+        Store saved = storeRepository.save(store);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.CREATE,
+            AuditResourceType.STORE,
+            saved.getId(),
+            "Loja criada",
+            storeMetadata(saved)
+        ));
+        return saved;
     }
 
     @Override
@@ -94,15 +109,45 @@ public class StoreServiceImpl implements StoreService {
 
         current.setUpdatedAt(LocalDateTime.now());
 
-        return storeRepository.save(current);
+        Store saved = storeRepository.save(current);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.UPDATE,
+            AuditResourceType.STORE,
+            saved.getId(),
+            "Loja atualizada",
+            storeMetadata(saved)
+        ));
+        return saved;
     }
 
     @Override
     public void deleteStore(String id) {
-        if (storeRepository.findById(id).isEmpty()) {
+        Optional<Store> existing = storeRepository.findById(id);
+        if (existing.isEmpty()) {
             throw new IllegalArgumentException("Loja não encontrada: " + id);
         }
         storeRepository.deleteById(id);
+        auditLogService.record(new AuditLogEntry(
+            AuditAction.DELETE,
+            AuditResourceType.STORE,
+            id,
+            "Loja removida",
+            storeMetadata(existing.get())
+        ));
+    }
+
+    private Map<String, Object> storeMetadata(Store store) {
+        var metadata = new HashMap<String, Object>();
+        putIfPresent(metadata, "codigo", store.getCodigo());
+        putIfPresent(metadata, "nome", store.getNome());
+        putIfPresent(metadata, "descricao", store.getDescricao());
+        return metadata;
+    }
+
+    private void putIfPresent(Map<String, Object> metadata, String key, Object value) {
+        if (value != null) {
+            metadata.put(key, value);
+        }
     }
 
     private void validateRequiredFields(Integer codigo, String nome, String descricao) {

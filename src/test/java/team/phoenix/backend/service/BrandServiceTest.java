@@ -2,6 +2,7 @@ package team.phoenix.backend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.Brand;
 import team.phoenix.backend.domain.repository.BrandRepository;
 
@@ -23,6 +27,7 @@ import team.phoenix.backend.domain.repository.BrandRepository;
 class BrandServiceTest {
 
     @Mock BrandRepository brandRepository;
+    @Mock AuditLogService auditLogService;
     @InjectMocks BrandServiceImpl service;
 
     @Test void listBrands_noFilter_returnsAll() {
@@ -59,6 +64,12 @@ class BrandServiceTest {
         assertThat(created.getCreatedAt()).isNotNull();
         assertThat(created.getUpdatedAt()).isNull();
         verify(brandRepository).save(input);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.CREATE
+                && entry.resourceType() == AuditResourceType.BRAND
+                && entry.summary().equals("Marca criada")
+                && entry.metadata().get("codigo").equals(10)
+        ));
     }
 
     @Test void createBrand_withDuplicatedCodigo_throwsConflict() {
@@ -97,6 +108,11 @@ class BrandServiceTest {
         assertThat(updated.getDescricao()).isEqualTo("Linha cinza");
         assertThat(updated.getUpdatedAt()).isNotNull();
         verify(brandRepository).save(current);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.UPDATE
+                && entry.resourceType() == AuditResourceType.BRAND
+                && entry.resourceId().equals("1")
+        ));
     }
 
     @Test void deleteBrand_notFound_throwsNotFound() {

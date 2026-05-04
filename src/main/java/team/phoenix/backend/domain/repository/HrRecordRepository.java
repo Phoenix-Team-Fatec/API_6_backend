@@ -15,6 +15,12 @@ public interface HrRecordRepository extends MongoRepository<HrRecord, String> {
      */
     Optional<HrRecord> findByMatriculaAndDataRef(String matricula, LocalDate dataRef);
 
+    List<HrRecord> findByDataRef(LocalDate dataRef);
+
+    List<HrRecord> findByCodLojaAndDataRef(Integer codLoja, LocalDate dataRef);
+
+    List<HrRecord> findByCodMarcaAndDataRef(Integer codMarca, LocalDate dataRef);
+
     /**
      * Busca todos os registros por matrícula
      */

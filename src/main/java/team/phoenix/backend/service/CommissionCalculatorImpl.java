@@ -30,6 +30,7 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
         double effectiveRate = applyRateOverride(baseRate, hr, exceptions);
         double salesBase = hr.getCodCargo() == MANAGER_CARGO ? storeSales : individualSales;
         int daysInMonth = month.lengthOfMonth();
+        LocalDate firstDay = month.withDayOfMonth(1);
         LocalDate lastDay = month.withDayOfMonth(daysInMonth);
 
         var absence = exceptions.stream()
@@ -38,6 +39,10 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
             .findFirst();
         var vacation = exceptions.stream()
             .filter(e -> e.getType() == ExceptionType.VACATION
+                && hr.getMatricula().equals(e.getMatricula()))
+            .findFirst();
+        var maternityLeave = exceptions.stream()
+            .filter(e -> e.getType() == ExceptionType.MATERNITY_LEAVE
                 && hr.getMatricula().equals(e.getMatricula()))
             .findFirst();
 
@@ -57,9 +62,11 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
                 String.format("Dismissal day %d: %.2f x %.4f x (%d/%d) = %.2f",
                     d, salesBase, effectiveRate, d, daysInMonth, c));
         } else if (absence.isPresent()) {
-            rule = applyAbsence(absence.get(), salesBase, effectiveRate, daysInMonth, lastDay);
+            rule = applyAbsence(absence.get(), salesBase, effectiveRate, daysInMonth, firstDay, lastDay);
         } else if (vacation.isPresent()) {
-            rule = applyVacation(vacation.get(), salesBase, effectiveRate, daysInMonth, lastDay);
+            rule = applyVacation(vacation.get(), salesBase, effectiveRate, daysInMonth, firstDay, lastDay);
+        } else if (maternityLeave.isPresent()) {
+            rule = applyMaternityLeave(maternityLeave.get(), salesBase, effectiveRate, daysInMonth, firstDay, lastDay);
         } else {
             double c = salesBase * effectiveRate;
             rule = new RuleResult(c, "GERAL",
@@ -146,9 +153,10 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
     // Parâm lastDay: último dia do mês
     // Retorna: RuleResult com comissão após afastamento
     private RuleResult applyAbsence(MonthlyException a, double salesBase, double rate,
-                                    int daysInMonth, LocalDate lastDay) {
+                                    int daysInMonth, LocalDate firstDay, LocalDate lastDay) {
+        LocalDate start = a.getStartDate().isBefore(firstDay) ? firstDay : a.getStartDate();
         LocalDate end = a.getEndDate().isAfter(lastDay) ? lastDay : a.getEndDate();
-        int absent = (int) ChronoUnit.DAYS.between(a.getStartDate(), end) + 1;
+        int absent = (int) ChronoUnit.DAYS.between(start, end) + 1;
         int worked = daysInMonth - absent;
 
         if (worked <= 0) {
@@ -184,14 +192,27 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
     // Parâm lastDay: último dia do mês
     // Retorna: RuleResult com comissão após férias
     private RuleResult applyVacation(MonthlyException v, double salesBase, double rate,
-                                     int daysInMonth, LocalDate lastDay) {
+                                     int daysInMonth, LocalDate firstDay, LocalDate lastDay) {
+        LocalDate start = v.getStartDate().isBefore(firstDay) ? firstDay : v.getStartDate();
         LocalDate end = v.getEndDate().isAfter(lastDay) ? lastDay : v.getEndDate();
-        int vacDays = (int) ChronoUnit.DAYS.between(v.getStartDate(), end) + 1;
+        int vacDays = (int) ChronoUnit.DAYS.between(start, end) + 1;
         int worked = daysInMonth - vacDays;
         double base = salesBase * rate * ((double) worked / daysInMonth);
         return new RuleResult(base, "FERIAS",
             String.format("Vacation %d days: %.2f x %.4f x (%d/%d) = %.2f",
                 vacDays, salesBase, rate, worked, daysInMonth, base));
+    }
+
+    private RuleResult applyMaternityLeave(MonthlyException m, double salesBase, double rate,
+                                           int daysInMonth, LocalDate firstDay, LocalDate lastDay) {
+        LocalDate start = m.getStartDate().isBefore(firstDay) ? firstDay : m.getStartDate();
+        LocalDate end = m.getEndDate() == null || m.getEndDate().isAfter(lastDay) ? lastDay : m.getEndDate();
+        int leaveDays = (int) ChronoUnit.DAYS.between(start, end) + 1;
+        int worked = Math.max(0, daysInMonth - leaveDays);
+        double base = salesBase * rate * ((double) worked / daysInMonth);
+        return new RuleResult(base, "MATERNIDADE",
+            String.format("Maternity leave %d days: %.2f x %.4f x (%d/%d) = %.2f",
+                leaveDays, salesBase, rate, worked, daysInMonth, base));
     }
 
     // Encontra o valor de bônus﻿que corresponde à faixa de vendas

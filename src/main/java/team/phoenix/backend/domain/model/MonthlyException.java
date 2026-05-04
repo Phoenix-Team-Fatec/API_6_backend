@@ -24,4 +24,6 @@ public class MonthlyException {
     private RateType rateType;
     private List<BonusTier> bonusTiers;
     private boolean appliesToManagers;
+    private Integer alternateCodLoja;
+    private Integer daysWorked;
 }
