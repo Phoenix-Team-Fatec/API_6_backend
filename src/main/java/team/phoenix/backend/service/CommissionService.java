@@ -13,4 +13,9 @@ public interface CommissionService {
      * @throws RuntimeException se HR ou taxa não encontrados
      */
     CommissionResult simulate(String matricula, LocalDate month);
+
+    /**
+     * Calcula comissao por funcionario, loja ou marca em um mes.
+     */
+    CommissionCalculationResult calculate(CommissionCalculationCommand command);
 }

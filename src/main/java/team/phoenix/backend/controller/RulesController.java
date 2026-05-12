@@ -62,6 +62,17 @@ public class RulesController {
         }
     }
 
+    @PostMapping("/generate")
+    public ResponseEntity<?> generateRate(@RequestBody GenerateRuleRequest req) {
+        try {
+            var result = rulesService.generateFromNaturalLanguage(req.prompt());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(GeneratedRuleResponse.from(result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao gerar regra com IA: " + e.getMessage());
+        }
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateRate(@PathVariable String id, @RequestBody CreateCommissionRateRequest req) {
         try {
@@ -79,7 +90,10 @@ public class RulesController {
             var rate = rulesService.updateRate(id, updated);
             return ResponseEntity.ok(CommissionRateResponse.from(rate));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            if (e.getMessage() != null && e.getMessage().startsWith("Regra não encontrada")) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.badRequest().body("Erro ao atualizar regra: " + e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Erro ao atualizar regra: " + e.getMessage());
         }

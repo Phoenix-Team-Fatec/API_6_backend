@@ -4,6 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import team.phoenix.backend.service.CommissionService;
+import team.phoenix.backend.service.CommissionCalculationResult;
+import team.phoenix.backend.service.exception.CommissionRateNotFoundException;
+import team.phoenix.backend.service.exception.EmployeeNotFoundException;
+import team.phoenix.backend.service.exception.InvalidCommissionRequestException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -34,7 +38,27 @@ public class CommissionController {
         try {
             return ResponseEntity.ok(
                 CommissionResponse.from(commissionService.simulate(matricula, yearMonth)));
-        } catch (RuntimeException e) {
+        } catch (EmployeeNotFoundException | CommissionRateNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/calculate")
+    public ResponseEntity<?> calculate(@RequestBody CommissionCalculationRequest request) {
+        try {
+            if (request == null) {
+                throw new InvalidCommissionRequestException("Request body is required");
+            }
+            request.getMonthAsLocalDate();
+            CommissionCalculationResult result = commissionService.calculate(request.toCommand());
+            return ResponseEntity.ok(CommissionCalculationResponse.from(result));
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body("Invalid month format. Use yyyy-MM");
+        } catch (InvalidCommissionRequestException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (EmployeeNotFoundException | CommissionRateNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

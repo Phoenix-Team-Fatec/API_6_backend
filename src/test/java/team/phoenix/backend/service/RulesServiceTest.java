@@ -5,6 +5,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import team.phoenix.backend.audit.application.AuditLogService;
+import team.phoenix.backend.audit.domain.AuditAction;
+import team.phoenix.backend.audit.domain.AuditResourceType;
 import team.phoenix.backend.domain.model.*;
 import team.phoenix.backend.domain.repository.*;
 import java.time.LocalDate;
@@ -19,7 +22,57 @@ class RulesServiceTest {
 
     @Mock CommissionRateRepository rateRepo;
     @Mock MonthlyExceptionRepository exceptionRepo;
+    @Mock BrandRepository brandRepository;
+    @Mock PositionRepository positionRepository;
+    @Mock AiIntegrationClient aiIntegrationClient;
+    @Mock AuditLogService auditLogService;
     @InjectMocks RulesServiceImpl service;
+
+    @Test void createRate_rejectsMissingCodMarca() {
+        var rate = validRate();
+        rate.setCodMarca(null);
+
+        assertThatThrownBy(() -> service.createRate(rate))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("codMarca is required");
+        verify(rateRepo, never()).save(any());
+    }
+
+    @Test void createRate_rejectsMissingCodCargo() {
+        var rate = validRate();
+        rate.setCodCargo(null);
+
+        assertThatThrownBy(() -> service.createRate(rate))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("codCargo is required");
+        verify(rateRepo, never()).save(any());
+    }
+
+    @Test void createRate_rejectsNegativePctComiss() {
+        var rate = validRate();
+        rate.setPctComiss(-0.01);
+
+        assertThatThrownBy(() -> service.createRate(rate))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("pctComiss must be greater than or equal to zero");
+        verify(rateRepo, never()).save(any());
+    }
+
+    @Test void createRate_rejectsBlankDescriptions() {
+        var missingBrandDescription = validRate();
+        missingBrandDescription.setDescrMarca(" ");
+        assertThatThrownBy(() -> service.createRate(missingBrandDescription))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("descrMarca is required");
+
+        var missingCargoDescription = validRate();
+        missingCargoDescription.setDescriCargo("");
+        assertThatThrownBy(() -> service.createRate(missingCargoDescription))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("descriCargo is required");
+
+        verify(rateRepo, never()).save(any());
+    }
 
     @Test void listRates_noFilter_returnsActiveAndInactiveButNotDeleted() {
         var active = CommissionRate.builder().isVigente(true).deletedAt(null).build();
@@ -46,9 +99,17 @@ class RulesServiceTest {
 
     @Test void listRates_filterByBoth_returnsFiltered() {
         var rate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
-        when(rateRepo.findByCodMarcaAndCodCargo(10, 100)).thenReturn(Optional.of(rate));
+        when(rateRepo.findByCodMarcaAndCodCargo(10, 100)).thenReturn(List.of(rate));
         assertThat(service.listRates(10, 100, null)).hasSize(1);
         verify(rateRepo).findByCodMarcaAndCodCargo(10, 100);
+    }
+
+    @Test void listRates_filterByBoth_returnsMultipleRulesForSameBrandAndPosition() {
+        var oldRate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.025).isVigente(true).build();
+        var generatedRate = CommissionRate.builder().codMarca(10).codCargo(100).pctComiss(0.06).isVigente(true).build();
+        when(rateRepo.findByCodMarcaAndCodCargo(10, 100)).thenReturn(List.of(oldRate, generatedRate));
+
+        assertThat(service.listRates(10, 100, null)).containsExactly(oldRate, generatedRate);
     }
 
     @Test void listRates_withIsVigenteTrue_returnsOnlyActive() {
@@ -115,6 +176,90 @@ class RulesServiceTest {
         assertThat(service.listExceptions(LocalDate.of(2025,7,1), null, "MATRIC-58")).hasSize(1);
     }
 
+    @Test void generateFromNaturalLanguage_withOverride_createsCommissionRateUsingAiExplanation() {
+        var prompt = "Em maio de 2026, marca 10 cargo 100 recebe 5% de comissao";
+        var override = new AiAgentOverride(
+            "Regra sazonal",
+            LocalDate.of(2026, 5, 1),
+            LocalDate.of(2026, 5, 31),
+            java.util.Map.of("10,100", 5.0),
+            java.util.Map.of(),
+            java.util.Map.of()
+        );
+        var aiResponse = new AiAgentResponse("override", override, null, "A IA alterou a taxa para 5% em maio.");
+        var saved = CommissionRate.builder()
+            .id("rate-1")
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR")
+            .pctComiss(0.05)
+            .data(LocalDate.of(2026, 5, 1))
+            .textoOriginal(prompt)
+            .explicacao("A IA alterou a taxa para 5% em maio.")
+            .versao(1)
+            .isVigente(true)
+            .build();
+
+        when(aiIntegrationClient.askAgent(prompt)).thenReturn(aiResponse);
+        when(brandRepository.findByCodigo(10)).thenReturn(Optional.of(Brand.builder().codigo(10).nome("PRETO").build()));
+        when(positionRepository.findByCodigo(100)).thenReturn(Optional.of(Position.builder().codigo(100).nome("VENDEDOR").build()));
+        when(rateRepo.save(any())).thenReturn(saved);
+
+        var result = service.generateFromNaturalLanguage(prompt);
+
+        assertThat(result.tipo()).isEqualTo("override");
+        assertThat(result.rules()).containsExactly(saved);
+        assertThat(result.exceptions()).isEmpty();
+        verify(rateRepo).save(argThat(rate ->
+            rate.getCodMarca().equals(10)
+                && rate.getCodCargo().equals(100)
+                && rate.getPctComiss().equals(0.05)
+                && rate.getTextoOriginal().equals(prompt)
+                && rate.getExplicacao().equals("A IA alterou a taxa para 5% em maio.")
+        ));
+    }
+
+    @Test void generateFromNaturalLanguage_withIntercorrencia_createsMonthlyException() {
+        var prompt = "MATRIC-1 recebe bonus fixo de 500 reais em maio";
+        var aiException = new AiAgentIntercorrencia(
+            "MATRIC-1",
+            "bonus_fixo",
+            500.0,
+            LocalDate.of(2026, 5, 1),
+            LocalDate.of(2026, 5, 31)
+        );
+        var aiResponse = new AiAgentResponse(
+            "intercorrencia",
+            null,
+            List.of(aiException),
+            "A IA gerou bonus fixo mensal para a matricula."
+        );
+        var saved = MonthlyException.builder()
+            .id("ex-1")
+            .yearMonth(LocalDate.of(2026, 5, 1))
+            .type(ExceptionType.BONUS_FIXED)
+            .matricula("MATRIC-1")
+            .amount(500.0)
+            .startDate(LocalDate.of(2026, 5, 1))
+            .endDate(LocalDate.of(2026, 5, 31))
+            .build();
+
+        when(aiIntegrationClient.askAgent(prompt)).thenReturn(aiResponse);
+        when(exceptionRepo.save(any())).thenReturn(saved);
+
+        var result = service.generateFromNaturalLanguage(prompt);
+
+        assertThat(result.tipo()).isEqualTo("intercorrencia");
+        assertThat(result.rules()).isEmpty();
+        assertThat(result.exceptions()).containsExactly(saved);
+        verify(exceptionRepo).save(argThat(exception ->
+            exception.getType() == ExceptionType.BONUS_FIXED
+                && exception.getMatricula().equals("MATRIC-1")
+                && exception.getAmount().equals(500.0)
+        ));
+    }
+
     @Test void listExceptions_byMonthTypeAndMatricula_returnsFiltered() {
         var ex = MonthlyException.builder().yearMonth(LocalDate.of(2025,7,1)).type(ExceptionType.ABSENCE).matricula("MATRIC-58").build();
         when(exceptionRepo.findByYearMonthAndTypeAndMatricula(LocalDate.of(2025,7,1), ExceptionType.ABSENCE, "MATRIC-58")).thenReturn(List.of(ex));
@@ -178,6 +323,11 @@ class RulesServiceTest {
         assertThat(previous.getIsVigente()).isTrue();
         assertThat(previous.getDeletedAt()).isNull();
         verify(rateRepo).save(current);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.UPDATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void activateRate_whenNotDeleted_reattivatesRule() {
@@ -220,6 +370,11 @@ class RulesServiceTest {
         assertThat(rate.getIsVigente()).isFalse();
         assertThat(rate.getDeletedAt()).isNull();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.DEACTIVATE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void softDeleteRate_whenFound_marksAsDeletedAndInactive() {
@@ -234,6 +389,11 @@ class RulesServiceTest {
         assertThat(rate.getIsVigente()).isFalse();
         assertThat(rate.getDeletedAt()).isNotNull();
         verify(rateRepo).save(rate);
+        verify(auditLogService).record(argThat(entry ->
+            entry.action() == AuditAction.SOFT_DELETE
+                && entry.resourceType() == AuditResourceType.COMMISSION_RATE
+                && entry.resourceId().equals("123")
+        ));
     }
 
     @Test void restoreRate_whenDeleted_recoversWithoutActivating() {
@@ -328,5 +488,15 @@ class RulesServiceTest {
         service.rollbackRate("123");
 
         verify(rateRepo, never()).save(any());
+    }
+
+    private CommissionRate validRate() {
+        return CommissionRate.builder()
+            .codMarca(10)
+            .descrMarca("PRETO")
+            .codCargo(100)
+            .descriCargo("VENDEDOR LOJA")
+            .pctComiss(0.025)
+            .build();
     }
 }

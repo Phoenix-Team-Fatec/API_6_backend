@@ -20,6 +20,8 @@ public record MonthlyExceptionResponse(
     Double overrideRate,
     RateType rateType,
     boolean appliesToManagers,
+    Integer alternateCodLoja,
+    Integer daysWorked,
     List<BonusTier> bonusTiers
 ) {
     public static MonthlyExceptionResponse from(MonthlyException e) {
@@ -27,7 +29,8 @@ public record MonthlyExceptionResponse(
             e.getId(), e.getYearMonth(), e.getType(), e.getMatricula(),
             e.getStartDate(), e.getEndDate(), e.getAmount(),
             e.getCodMarca(), e.getCodCargo(), e.getOverrideRate(),
-            e.getRateType(), e.isAppliesToManagers(), e.getBonusTiers()
+            e.getRateType(), e.isAppliesToManagers(),
+            e.getAlternateCodLoja(), e.getDaysWorked(), e.getBonusTiers()
         );
     }
 }

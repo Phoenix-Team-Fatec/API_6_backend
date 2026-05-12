@@ -28,7 +28,9 @@ public class ExceptionSeeder {
             absence(LocalDate.of(2025,7,1), "MATRIC-400", LocalDate.of(2025,7,15), LocalDate.of(2025,7,17)),
             absence(LocalDate.of(2025,7,1), "MATRIC-485", LocalDate.of(2025,7,10), LocalDate.of(2025,7,29)),
             vacation(LocalDate.of(2025,7,1), "MATRIC-549", LocalDate.of(2025,7,10), LocalDate.of(2025,7,25)),
-            vacation(LocalDate.of(2025,7,1), "MATRIC-183", LocalDate.of(2025,7,10), LocalDate.of(2025,7,25))
+            vacation(LocalDate.of(2025,7,1), "MATRIC-183", LocalDate.of(2025,7,10), LocalDate.of(2025,7,25)),
+            MonthlyException.builder().yearMonth(LocalDate.of(2025,7,1)).type(ExceptionType.MULTI_STORE)
+                .matricula("MATRIC-293").alternateCodLoja(5).daysWorked(10).build()
         );
     }
 
@@ -68,7 +70,7 @@ public class ExceptionSeeder {
         return new ArrayList<>(List.of(
             absence(LocalDate.of(2025,12,1), "MATRIC-188", LocalDate.of(2025,12,3),  LocalDate.of(2025,12,10)),
             absence(LocalDate.of(2025,12,1), "MATRIC-5",   LocalDate.of(2025,11,10), LocalDate.of(2025,12,12)),
-            absence(LocalDate.of(2025,12,1), "MATRIC-71",  LocalDate.of(2025,12,1),  LocalDate.of(2025,12,31)),
+            maternity(LocalDate.of(2025,12,1), "MATRIC-71",  LocalDate.of(2025,10,1),  LocalDate.of(2025,12,31)),
             vacation(LocalDate.of(2025,12,1), "MATRIC-318", LocalDate.of(2025,12,15), LocalDate.of(2026,1,2)),
             vacation(LocalDate.of(2025,12,1), "MATRIC-52",  LocalDate.of(2025,11,24), LocalDate.of(2025,12,13)),
             rateAdditive(LocalDate.of(2025,12,1), 40, 0.01),
@@ -111,6 +113,11 @@ public class ExceptionSeeder {
     // Parâm codMarca: código da marca
     // Parâm delta: valor a acrescentar à taxa
     // Retorna: MonthlyException de sobrescrita (ADITIVA)
+    private MonthlyException maternity(LocalDate ym, String mat, LocalDate s, LocalDate e) {
+        return MonthlyException.builder().yearMonth(ym).type(ExceptionType.MATERNITY_LEAVE)
+            .matricula(mat).startDate(s).endDate(e).build();
+    }
+
     private MonthlyException rateAdditive(LocalDate ym, Integer codMarca, double delta) {
         return MonthlyException.builder().yearMonth(ym).type(ExceptionType.RATE_OVERRIDE)
             .codMarca(codMarca).overrideRate(delta).rateType(RateType.ADDITIVE)

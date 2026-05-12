@@ -128,6 +128,7 @@ mvn test
 
 - `GET /health`: endpoint simples de healthcheck.
 - `GET /api/commission/simulate?matricula=<valor>&month=yyyy-MM`: simula o cálculo de comissão para um colaborador em um mês.
+- `POST /api/commission/calculate`: calcula comissao por funcionario, loja ou marca em um mes.
 - `GET /api/rules/commission-rates`: lista regras de comissão com filtros opcionais.
 - `GET /api/rules/commission-rates/trash`: lista regras removidas logicamente.
 - `GET /api/rules/{id}`: busca uma regra por id.
@@ -139,6 +140,26 @@ mvn test
 - `POST /api/rules/{id}/restore`: restaura uma regra removida.
 - `POST /api/rules/{id}/rollback`: reverte uma regra para versão anterior.
 - `GET /api/rules/exceptions?month=yyyy-MM`: lista exceções mensais, com filtros opcionais por tipo e matrícula.
+- `GET /api/brands`: lista marcas com filtros opcionais por código, nome e descrição.
+- `GET /api/brands/{id}`: busca uma marca por id.
+- `POST /api/brands`: cria uma nova marca.
+- `PUT /api/brands/{id}`: atualiza uma marca.
+- `DELETE /api/brands/{id}`: remove uma marca.
+- `GET /api/stores`: lista lojas com filtros opcionais por código, nome e descrição.
+- `GET /api/stores/{id}`: busca uma loja por id.
+- `POST /api/stores`: cria uma nova loja.
+- `PUT /api/stores/{id}`: atualiza uma loja.
+- `DELETE /api/stores/{id}`: remove uma loja.
+
+## 🔍 FUNCIONARIOS
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| `GET` | `/api/funcionarios` | Lista todos os funcionários ativos |
+| `GET` | `/api/funcionarios/{matricula}` | Busca funcionário por matrícula |
+| `DELETE` | `/api/funcionarios/{id}` | Soft delete (marca como inativo) |
+| `POST` | `/api/funcionarios/{id}/reactivate` | Reativa funcionário |
+| `POST` | `/api/funcionarios/consolidate` | **Consolida hr_records → funcionarios** |
 
 ## Exemplos rápidos
 
@@ -152,6 +173,14 @@ Simulação de comissão:
 
 ```bash
 curl "http://localhost:8080/api/commission/simulate?matricula=12345&month=2025-08"
+```
+
+Calculo de comissao por funcionario:
+
+```bash
+curl -X POST "http://localhost:8080/api/commission/calculate" \
+  -H "Content-Type: application/json" \
+  -d "{\"month\":\"2025-07\",\"targetType\":\"EMPLOYEE\",\"matricula\":\"MATRIC-1\"}"
 ```
 
 ## Comandos disponíveis

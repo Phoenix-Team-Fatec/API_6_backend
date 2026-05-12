@@ -193,4 +193,52 @@ class CommissionCalculatorTest {
             5000.0, 130000.0, 0.010, List.of(tier), LocalDate.of(2025,12,1));
         assertThat(r.totalBonuses()).isCloseTo(5000.0, within(D));
     }
+
+    @Test void ferias_crossMonth_clipsStartToFirstDayOfMonth() {
+        var december = LocalDate.of(2025, 12, 1);
+        var vacation = MonthlyException.builder().type(ExceptionType.VACATION)
+            .matricula("MATRIC-52").yearMonth(december)
+            .startDate(LocalDate.of(2025,11,24)).endDate(LocalDate.of(2025,12,13)).build();
+
+        var r = calculator.calculate(
+            HrRecord.builder().matricula("MATRIC-52").codMarca(10).codLoja(35).codCargo(100)
+                .descrMarca("M").descrLoja("L").descriCargo("C")
+                .dataRef(december).dataAdmiss(LocalDate.of(2020,1,1)).build(),
+            31000.0, 0.0, 0.01, List.of(vacation), december);
+
+        assertThat(r.ruleApplied()).isEqualTo("FERIAS");
+        assertThat(r.commissionBase()).isCloseTo(180.0, within(D));
+    }
+
+    @Test void afastamento_crossMonth_clipsStartToFirstDayOfMonth() {
+        var december = LocalDate.of(2025, 12, 1);
+        var absence = MonthlyException.builder().type(ExceptionType.ABSENCE)
+            .matricula("MATRIC-5").yearMonth(december)
+            .startDate(LocalDate.of(2025,11,10)).endDate(LocalDate.of(2025,12,12)).build();
+
+        var r = calculator.calculate(
+            HrRecord.builder().matricula("MATRIC-5").codMarca(10).codLoja(35).codCargo(100)
+                .descrMarca("M").descrLoja("L").descriCargo("C")
+                .dataRef(december).dataAdmiss(LocalDate.of(2020,1,1)).build(),
+            31000.0, 0.0, 0.01, List.of(absence), december);
+
+        assertThat(r.ruleApplied()).isEqualTo("AFASTAMENTO_MENOR_15");
+        assertThat(r.commissionBase()).isCloseTo(3690.0, within(D));
+    }
+
+    @Test void maternityLeaveFromPreviousMonth_zerosCommissionForWholeMonth() {
+        var december = LocalDate.of(2025, 12, 1);
+        var maternity = MonthlyException.builder().type(ExceptionType.MATERNITY_LEAVE)
+            .matricula("MATRIC-71").yearMonth(december)
+            .startDate(LocalDate.of(2025,10,1)).endDate(LocalDate.of(2025,12,31)).build();
+
+        var r = calculator.calculate(
+            HrRecord.builder().matricula("MATRIC-71").codMarca(10).codLoja(35).codCargo(100)
+                .descrMarca("M").descrLoja("L").descriCargo("C")
+                .dataRef(december).dataAdmiss(LocalDate.of(2020,1,1)).build(),
+            31000.0, 0.0, 0.01, List.of(maternity), december);
+
+        assertThat(r.ruleApplied()).isEqualTo("MATERNIDADE");
+        assertThat(r.commissionBase()).isCloseTo(0.0, within(D));
+    }
 }
