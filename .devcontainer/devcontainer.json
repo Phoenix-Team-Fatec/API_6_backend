@@ -15,6 +15,6 @@
       ]
     }
   },
-  "forwardPorts": [27017, 8080],
+  "forwardPorts": [27017, 8000, 8080],
   "postCreateCommand": "bash -lc 'java -version && if [ -f mvn ]; then chmod +x mvn && ./mvn -v; fi'"
 }
