@@ -83,6 +83,7 @@ class RulesControllerTest {
     @Test void listRates_withIsVigenteTrue_returnsOnlyActive() throws Exception {
         var rate = CommissionRate.builder()
             .id("123")
+            .nomeRegra("Comissao PRETO Marco")
             .codMarca(10).descrMarca("PRETO")
             .codCargo(100).descriCargo("VENDEDOR LOJA")
             .pctComiss(0.025)
@@ -100,6 +101,7 @@ class RulesControllerTest {
     @Test void listRates_withIsVigenteFalse_returnsOnlyInactive() throws Exception {
         var rate = CommissionRate.builder()
             .id("123")
+            .nomeRegra("Comissao PRETO Marco")
             .codMarca(10).descrMarca("PRETO")
             .codCargo(100).descriCargo("VENDEDOR LOJA")
             .pctComiss(0.025)
@@ -151,6 +153,7 @@ class RulesControllerTest {
     @Test void createRate_withValidData_returnsCreated() throws Exception {
         var rate = CommissionRate.builder()
             .id("123")
+            .nomeRegra("Comissao PRETO Marco")
             .codMarca(10).descrMarca("PRETO")
             .codCargo(100).descriCargo("VENDEDOR LOJA")
             .pctComiss(0.025)
@@ -165,12 +168,14 @@ class RulesControllerTest {
 
         mockMvc.perform(post("/api/rules")
                 .contentType("application/json")
-                .content("{\"codMarca\":10,\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.025,\"data\":\"2026-03\",\"textoOriginal\":\"Texto manual\",\"explicacao\":\"Explicacao manual\"}"))
+                .content("{\"nomeRegra\":\"Comissao PRETO Marco\",\"codMarca\":10,\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.025,\"data\":\"2026-03\",\"textoOriginal\":\"Texto manual\",\"explicacao\":\"Explicacao manual\"}"))
             .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.nomeRegra").value("Comissao PRETO Marco"))
             .andExpect(jsonPath("$.codMarca").value(10))
             .andExpect(jsonPath("$.versao").value(1));
 
         verify(rulesService).createRate(argThat(r ->
+            "Comissao PRETO Marco".equals(r.getNomeRegra()) &&
             "Texto manual".equals(r.getTextoOriginal()) &&
             "Explicacao manual".equals(r.getExplicacao())
         ));
@@ -218,6 +223,7 @@ class RulesControllerTest {
     @Test void updateRate_withValidData_returnsOk() throws Exception {
         var updated = CommissionRate.builder()
             .id("123")
+            .nomeRegra("Comissao PRETO Atualizada")
             .codMarca(10).descrMarca("PRETO")
             .codCargo(100).descriCargo("VENDEDOR LOJA")
             .pctComiss(0.03)
@@ -230,9 +236,14 @@ class RulesControllerTest {
 
         mockMvc.perform(put("/api/rules/123")
                 .contentType("application/json")
-                .content("{\"codMarca\":10,\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.03}"))
+                .content("{\"nomeRegra\":\"Comissao PRETO Atualizada\",\"codMarca\":10,\"descrMarca\":\"PRETO\",\"codCargo\":100,\"descriCargo\":\"VENDEDOR LOJA\",\"pctComiss\":0.03}"))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.nomeRegra").value("Comissao PRETO Atualizada"))
             .andExpect(jsonPath("$.versao").value(2));
+
+        verify(rulesService).updateRate(anyString(), argThat(r ->
+            "Comissao PRETO Atualizada".equals(r.getNomeRegra())
+        ));
     }
 
     @Test void updateRate_withoutData_keepsNullInRequestToService() throws Exception {
@@ -328,6 +339,7 @@ class RulesControllerTest {
     @Test void getRate_found_returnsOk() throws Exception {
         var rate = CommissionRate.builder()
             .id("123")
+            .nomeRegra("Comissao PRETO")
             .codMarca(10).descrMarca("PRETO")
             .codCargo(100).versao(1).isVigente(true)
             .createdAt(LocalDateTime.now())
@@ -336,7 +348,8 @@ class RulesControllerTest {
 
         mockMvc.perform(get("/api/rules/123"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value("123"));
+            .andExpect(jsonPath("$.id").value("123"))
+            .andExpect(jsonPath("$.nomeRegra").value("Comissao PRETO"));
     }
 
     @Test void getRate_notFound_returns404() throws Exception {

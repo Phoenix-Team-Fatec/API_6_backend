@@ -7,6 +7,7 @@ import java.util.List;
 
 public record CommissionRateResponse(
     String id,
+    String nomeRegra,
     Integer codMarca,
     String descrMarca,
     Integer codCargo,
@@ -25,6 +26,7 @@ public record CommissionRateResponse(
     public static CommissionRateResponse from(CommissionRate r) {
         return new CommissionRateResponse(
             r.getId(),
+            r.getNomeRegra(),
             r.getCodMarca(),
             r.getDescrMarca(),
             r.getCodCargo(),
@@ -47,6 +49,7 @@ public record CommissionRateResponse(
 
     // DTO para versões anteriores
     public record CommissionRateVersionResponse(
+        String nomeRegra,
         Integer codMarca,
         String descrMarca,
         Integer codCargo,
@@ -63,6 +66,7 @@ public record CommissionRateResponse(
     ) {
         public static CommissionRateVersionResponse from(CommissionRate.CommissionRateVersion v) {
             return new CommissionRateVersionResponse(
+                v.getNomeRegra(),
                 v.getCodMarca(),
                 v.getDescrMarca(),
                 v.getCodCargo(),

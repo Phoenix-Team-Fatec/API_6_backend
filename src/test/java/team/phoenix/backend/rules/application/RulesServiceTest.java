@@ -274,6 +274,7 @@ class RulesServiceTest {
     @Test void updateRate_mergesOnlyProvidedFields_andStoresFullPreviousVersion() {
         var current = CommissionRate.builder()
             .id("123")
+            .nomeRegra("Comissao PRETO")
             .codMarca(10)
             .descrMarca("PRETO")
             .codCargo(100)
@@ -292,6 +293,7 @@ class RulesServiceTest {
         when(rateRepo.findById("123")).thenReturn(Optional.of(current));
 
         var updated = CommissionRate.builder()
+            .nomeRegra("Comissao CINZA")
             .descrMarca("CINZA")
             .pctComiss(0.03)
             .isVigente(false)
@@ -300,6 +302,7 @@ class RulesServiceTest {
         service.updateRate("123", updated);
 
         assertThat(current.getCodMarca()).isEqualTo(10);
+        assertThat(current.getNomeRegra()).isEqualTo("Comissao CINZA");
         assertThat(current.getDescrMarca()).isEqualTo("CINZA");
         assertThat(current.getCodCargo()).isEqualTo(100);
         assertThat(current.getDescriCargo()).isEqualTo("VENDEDOR LOJA");
@@ -313,6 +316,7 @@ class RulesServiceTest {
         assertThat(current.getVersoesAnteriores()).hasSize(1);
 
         var previous = current.getVersoesAnteriores().get(0);
+        assertThat(previous.getNomeRegra()).isEqualTo("Comissao PRETO");
         assertThat(previous.getCodMarca()).isEqualTo(10);
         assertThat(previous.getDescrMarca()).isEqualTo("PRETO");
         assertThat(previous.getCodCargo()).isEqualTo(100);
@@ -431,6 +435,7 @@ class RulesServiceTest {
 
     @Test void rollbackRate_whenHasPreviousVersion_restoresPreviousAndPopsHistory() {
         var previous = CommissionRate.CommissionRateVersion.builder()
+            .nomeRegra("Comissao PRETO v4")
             .codMarca(10)
             .descrMarca("PRETO")
             .codCargo(100)
@@ -448,6 +453,7 @@ class RulesServiceTest {
 
         var current = CommissionRate.builder()
             .id("123")
+            .nomeRegra("Comissao CINZA v5")
             .codMarca(20)
             .descrMarca("CINZA")
             .codCargo(150)
@@ -468,6 +474,7 @@ class RulesServiceTest {
         service.rollbackRate("123");
 
         assertThat(current.getVersao()).isEqualTo(4);
+        assertThat(current.getNomeRegra()).isEqualTo("Comissao PRETO v4");
         assertThat(current.getCodMarca()).isEqualTo(10);
         assertThat(current.getDescrMarca()).isEqualTo("PRETO");
         assertThat(current.getCodCargo()).isEqualTo(100);
@@ -496,6 +503,7 @@ class RulesServiceTest {
 
     private CommissionRate validRate() {
         return CommissionRate.builder()
+            .nomeRegra("Comissao PRETO")
             .codMarca(10)
             .descrMarca("PRETO")
             .codCargo(100)

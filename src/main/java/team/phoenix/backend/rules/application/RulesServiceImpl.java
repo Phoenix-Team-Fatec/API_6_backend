@@ -300,6 +300,7 @@ public class RulesServiceImpl implements RulesService {
 
         // Guardar versão anterior no histórico, sem carregar versoesAnteriores
         CommissionRate.CommissionRateVersion previousVersion = CommissionRate.CommissionRateVersion.builder()
+            .nomeRegra(current.getNomeRegra())
             .codMarca(current.getCodMarca())
             .descrMarca(current.getDescrMarca())
             .codCargo(current.getCodCargo())
@@ -318,6 +319,9 @@ public class RulesServiceImpl implements RulesService {
         current.getVersoesAnteriores().add(previousVersion);
 
         // Atualizar somente os campos enviados; manter o restante
+        if (updatedRule.getNomeRegra() != null) {
+            current.setNomeRegra(updatedRule.getNomeRegra());
+        }
         if (updatedRule.getCodMarca() != null) {
             current.setCodMarca(updatedRule.getCodMarca());
         }
@@ -439,6 +443,7 @@ public class RulesServiceImpl implements RulesService {
         CommissionRate.CommissionRateVersion previous = current.getVersoesAnteriores().remove(lastIndex);
 
         current.setCodMarca(previous.getCodMarca());
+        current.setNomeRegra(previous.getNomeRegra());
         current.setDescrMarca(previous.getDescrMarca());
         current.setCodCargo(previous.getCodCargo());
         current.setDescriCargo(previous.getDescriCargo());
@@ -519,6 +524,7 @@ public class RulesServiceImpl implements RulesService {
     private Map<String, Object> rateMetadata(CommissionRate rate) {
         var metadata = new HashMap<String, Object>();
         putIfPresent(metadata, "codMarca", rate.getCodMarca());
+        putIfPresent(metadata, "nomeRegra", rate.getNomeRegra());
         putIfPresent(metadata, "codCargo", rate.getCodCargo());
         putIfPresent(metadata, "versao", rate.getVersao());
         putIfPresent(metadata, "pctComiss", rate.getPctComiss());

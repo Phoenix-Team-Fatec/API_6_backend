@@ -44,6 +44,7 @@ public class RulesController {
     public ResponseEntity<?> createRate(@RequestBody CreateCommissionRateRequest req) {
         try {
             var rate = CommissionRate.builder()
+                .nomeRegra(req.nomeRegra())
                 .codMarca(req.codMarca())
                 .descrMarca(req.descrMarca())
                 .codCargo(req.codCargo())
@@ -77,6 +78,7 @@ public class RulesController {
     public ResponseEntity<?> updateRate(@PathVariable String id, @RequestBody CreateCommissionRateRequest req) {
         try {
             var updated = CommissionRate.builder()
+                .nomeRegra(req.nomeRegra())
                 .codMarca(req.codMarca())
                 .descrMarca(req.descrMarca())
                 .codCargo(req.codCargo())

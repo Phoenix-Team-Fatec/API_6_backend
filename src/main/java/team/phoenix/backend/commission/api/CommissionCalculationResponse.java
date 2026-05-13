@@ -3,6 +3,7 @@ package team.phoenix.backend.commission.api;
 import java.time.LocalDate;
 import java.util.List;
 
+import team.phoenix.backend.commission.application.AppliedRuleDetail;
 import team.phoenix.backend.commission.application.CommissionCalculationResult;
 import team.phoenix.backend.commission.application.CommissionTargetType;
 
@@ -12,7 +13,8 @@ public record CommissionCalculationResponse(
     String targetId,
     List<CommissionResponse> items,
     double totalCommission,
-    List<String> appliedRules
+    List<String> appliedRules,
+    List<AppliedRuleDetail> appliedRuleDetails
 ) {
     public static CommissionCalculationResponse from(CommissionCalculationResult result) {
         List<CommissionResponse> items = result.items().stream()
@@ -24,7 +26,8 @@ public record CommissionCalculationResponse(
             result.targetId(),
             items,
             result.totalCommission(),
-            result.appliedRules()
+            result.appliedRules(),
+            result.appliedRuleDetails()
         );
     }
 }
