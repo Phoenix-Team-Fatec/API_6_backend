@@ -1,0 +1,99 @@
+### Ambiente
+@baseUrl = http://localhost:8080
+@tokenUser = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJhdXRob3JpdGllcyI6WyJST0xFX1VTRVIiLCJGQUNUT1JfUEFTU1dPUkQiXSwiaWF0IjoxNzc5NDE0MzAzLCJleHAiOjE3Nzk0MTc5MDN9.o_sV0goYSgm1hgzfCbfMSWnaP4spltIka6jIf-Mdj6-n7MxQziQsCQrWU1HloK4gyEajJzikw66URCUDCzz12g
+@tokenAdmin = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbkBnbWFpbC5jb20iLCJhdXRob3JpdGllcyI6WyJST0xFX1VTRVIiLCJGQUNUT1JfUEFTU1dPUkQiXSwiaWF0IjoxNzc5NDE0MzAzLCJleHAiOjE3Nzk0MTc5MDN9.o_sV0goYSgm1hgzfCbfMSWnaP4spltIka6jIf-Mdj6-n7MxQziQsCQrWU1HloK4gyEajJzikw66URCUDCzz12g
+
+### 1. Registrar novo usuário (PUBLIC)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "nome": "João Silva",
+  "email": "joao@gmail.com",
+  "senha": "senha123",
+  "papel": "USER"
+}
+
+### 2. Registrar Admin (PUBLIC)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "nome": "Admin User 2",
+  "email": "admin2@gmail.com",
+  "senha": "admin123",
+  "papel": "ADMIN"
+}
+
+### 3. Login - Obter Token (PUBLIC)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "joao@gmail.com",
+  "senha": "senha123"
+}
+
+### 4. Login Admin - Obter Token (PUBLIC)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gmail.com",
+  "senha": "admin123"
+}
+
+### 5. Listar Usuários (REQUER TOKEN)
+GET {{baseUrl}}/api/usuarios
+Authorization: Bearer {{tokenUser}}
+
+### 6. Criar Novo Usuário (REQUER ADMIN)
+POST {{baseUrl}}/api/usuarios
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{
+  "nome": "Novo User",
+  "email": "novo@gmail.com",
+  "senha": "senha456",
+  "papel": "USER"
+}
+
+### 7. Buscar Usuário por ID (REQUER TOKEN)
+GET {{baseUrl}}/api/usuarios/6a0dc1ff049756f534022982
+Authorization: Bearer {{tokenUser}}
+
+### 8. Buscar por Email (REQUER TOKEN)
+GET {{baseUrl}}/api/usuarios/email/joao@gmail.com
+Authorization: Bearer {{tokenUser}}
+
+### 9. Listar Ativos (REQUER TOKEN)
+GET {{baseUrl}}/api/usuarios/ativos/lista
+Authorization: Bearer {{tokenUser}}
+
+### 10. Listar por Papel (REQUER TOKEN)
+GET {{baseUrl}}/api/usuarios/papel/USER
+Authorization: Bearer {{tokenUser}}
+
+### 11. Atualizar Usuário (REQUER ADMIN)
+PUT {{baseUrl}}/api/usuarios/6a0dc1ff049756f534022982
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{
+  "nome": "João Silva Updated",
+  "email": "joao.updated@gmail.com",
+  "senha": "novaSenha123",
+  "papel": "USER"
+}
+
+### 12. Alterar Status (REQUER ADMIN)
+PATCH {{baseUrl}}/api/usuarios/6a0dc1ff049756f534022982/status?ativo=false
+Authorization: Bearer {{tokenAdmin}}
+
+### 13. Deletar Usuário (REQUER ADMIN)
+DELETE {{baseUrl}}/api/usuarios/6a0dc1ff049756f534022982
+Authorization: Bearer {{tokenAdmin}}
+
+### 14. Sem Autenticação (DEVE RETORNAR 403)
+GET {{baseUrl}}/api/usuarios

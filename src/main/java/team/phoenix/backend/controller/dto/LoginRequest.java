@@ -5,14 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-// DTO para requisição de criação/edição de usuário
+// DTO para requisição de login
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CriarUsuarioRequest {
-    private String nome;
+public class LoginRequest {
     private String email;
     private String senha;
-    private String papel; // ADMIN ou USER
 }

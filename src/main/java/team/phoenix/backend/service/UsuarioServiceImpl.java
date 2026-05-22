@@ -10,7 +10,6 @@ import team.phoenix.backend.controller.dto.CriarUsuarioRequest;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 // Implementação do serviço de usuário
 @Service
