@@ -44,6 +44,7 @@ Exemplo:
 
 ```env
 MONGODB_URI=mongodb://phoenix:phoenix@localhost:27018/api6?authSource=admin
+COMMISSION_AI_BASE_URL=http://127.0.0.1:8000
 ```
 
 ### O que a variável faz
@@ -52,9 +53,17 @@ MONGODB_URI=mongodb://phoenix:phoenix@localhost:27018/api6?authSource=admin
 
 ### Referências rápidas de uso
 
+- `COMMISSION_AI_BASE_URL`: URL base do servico de IA/ML consumido pelo backend.
+
 - Dentro do devcontainer: `mongodb://phoenix:phoenix@mongo:27017/api6?authSource=admin`
 - Na máquina host, com Docker expondo a porta: `mongodb://phoenix:phoenix@localhost:27018/api6?authSource=admin`
 - Em produção/staging: use a URI completa do MongoDB/Atlas
+
+Para o servico de IA/ML:
+
+- Dentro do devcontainer com o servico `ml` do Compose: `http://ml:8000`
+- Na maquina host, com backend e ML rodando localmente: `http://127.0.0.1:8000`
+- Dentro do devcontainer com ML rodando fora do Docker: `http://host.docker.internal:8000`
 
 ## 3. Preparar os dados de importação
 
@@ -89,6 +98,26 @@ mvn spring-boot:run -Dspring-boot.run.profiles=import
 ```
 
 ## 5. Rodar a aplicação em desenvolvimento
+
+Fluxo recomendado para desenvolvimento local:
+
+1. Abra o backend pelo devcontainer. O Compose do devcontainer sobe `mongo` e `ml`.
+2. No terminal do devcontainer, rode o backend:
+
+```bash
+./mvnw spring-boot:run
+```
+
+3. Em um terminal local, rode o frontend:
+
+```bash
+cd ../API_6_frontend
+npm run dev
+```
+
+Nesse fluxo, o backend usa `COMMISSION_AI_BASE_URL=http://ml:8000` e o frontend local usa `VITE_API_URL=http://localhost:8080`.
+
+Se optar por rodar fora do devcontainer:
 
 Windows:
 

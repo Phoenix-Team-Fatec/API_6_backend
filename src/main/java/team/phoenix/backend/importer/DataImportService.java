@@ -4,8 +4,8 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import team.phoenix.backend.domain.model.*;
-import team.phoenix.backend.service.PseudoCodeGenerator;
-import team.phoenix.backend.service.TextualRuleGenerator;
+import team.phoenix.backend.rules.application.PseudoCodeGenerator;
+import team.phoenix.backend.rules.application.TextualRuleGenerator;
 
 import java.io.*;
 import java.time.LocalDate;

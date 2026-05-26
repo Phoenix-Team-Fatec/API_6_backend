@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 @CompoundIndex(name = "vigente_idx", def = "{'isVigente': 1, 'codMarca': 1, 'codCargo': 1}")
 public class CommissionRate {
     @Id private String id;
+    private String nomeRegra;
     private Integer codMarca;
     private String descrMarca;
     private Integer codCargo;
@@ -59,6 +60,7 @@ public class CommissionRate {
     // Classe interna para versões anteriores
     @Data @Builder @NoArgsConstructor @AllArgsConstructor
     public static class CommissionRateVersion {
+        private String nomeRegra;
         private Integer codMarca;
         private String descrMarca;
         private Integer codCargo;
