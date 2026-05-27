@@ -1,6 +1,7 @@
 package team.phoenix.backend.commission.application;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 public record AiCommissionResult(
     String matricula,
@@ -11,5 +12,12 @@ public record AiCommissionResult(
     @JsonProperty("valor_comissao_bruto") double valorComissaoBruto,
     @JsonProperty("ajuste_proporcional") double ajusteProporcional,
     double bonus,
-    @JsonProperty("valor_final") double valorFinal
+    @JsonProperty("valor_final") double valorFinal,
+    
+    /**
+     * Etapas do cálculo com rastreabilidade completa.
+     * Pode ser null se auditoria=false foi enviado ao cálculo.
+     */
+    @JsonProperty("etapas")
+    List<EtapaCalculo> etapas
 ) {}

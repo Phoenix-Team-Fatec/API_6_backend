@@ -11,7 +11,8 @@ public record CommissionCalculationResult(
     List<CommissionResult> items,
     double totalCommission,
     List<String> appliedRules,
-    List<AppliedRuleDetail> appliedRuleDetails
+    List<AppliedRuleDetail> appliedRuleDetails,
+    List<EtapaCalculo> etapas
 ) {
     public CommissionCalculationResult(
             LocalDate month,
@@ -20,7 +21,7 @@ public record CommissionCalculationResult(
             List<CommissionResult> items,
             double totalCommission,
             List<String> appliedRules) {
-        this(month, targetType, targetId, items, totalCommission, appliedRules, List.of());
+        this(month, targetType, targetId, items, totalCommission, appliedRules, List.of(), List.of());
     }
 
     public static CommissionCalculationResult from(
@@ -37,6 +38,16 @@ public record CommissionCalculationResult(
             String targetId,
             List<CommissionResult> items,
             List<AppliedRuleDetail> appliedRuleDetails) {
+        return from(month, targetType, targetId, items, appliedRuleDetails, List.of());
+    }
+
+    public static CommissionCalculationResult from(
+            LocalDate month,
+            CommissionTargetType targetType,
+            String targetId,
+            List<CommissionResult> items,
+            List<AppliedRuleDetail> appliedRuleDetails,
+            List<EtapaCalculo> etapas) {
         double total = items.stream()
             .mapToDouble(CommissionResult::finalCommission)
             .sum();
@@ -44,6 +55,6 @@ public record CommissionCalculationResult(
             .map(CommissionResult::ruleApplied)
             .distinct()
             .toList();
-        return new CommissionCalculationResult(month, targetType, targetId, items, total, rules, appliedRuleDetails);
+        return new CommissionCalculationResult(month, targetType, targetId, items, total, rules, appliedRuleDetails, etapas);
     }
 }

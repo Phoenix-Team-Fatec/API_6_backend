@@ -50,6 +50,11 @@ public class CommissionServiceImpl implements CommissionService {
 
     @Override
     public CommissionCalculationResult calculate(CommissionCalculationCommand command) {
+        return calculate(command, true);
+    }
+
+    @Override
+    public CommissionCalculationResult calculate(CommissionCalculationCommand command, boolean auditoria) {
         validateCommand(command);
         LocalDate month = command.monthAsLocalDate();
 
@@ -60,15 +65,21 @@ public class CommissionServiceImpl implements CommissionService {
         List<MonthlyException> exceptions = exceptionRepo.findByYearMonth(month);
 
         var aiRequest = AiCommissionRequest.from(employees, sales, rates, exceptions, monthlyOverrides, month);
-        var aiResults = aiClient.calculate(aiRequest, month.getYear(), month.getMonthValue());
+        var aiResults = aiClient.calculate(aiRequest, month.getYear(), month.getMonthValue(), auditoria);
         var items = mapAiResults(aiResults, employees, month);
+        
+        // Extrai etapas do primeiro resultado (se houver)
+        List<EtapaCalculo> etapas = aiResults.isEmpty() || aiResults.get(0).etapas() == null 
+            ? List.of() 
+            : aiResults.get(0).etapas();
 
         return CommissionCalculationResult.from(
             month,
             command.targetType(),
             resolveTargetId(command),
             items,
-            mapAppliedRuleDetails(rates)
+            mapAppliedRuleDetails(rates),
+            etapas
         );
     }
 

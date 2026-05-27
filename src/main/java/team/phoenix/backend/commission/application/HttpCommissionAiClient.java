@@ -13,6 +13,7 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -34,7 +35,7 @@ class HttpCommissionAiClient implements CommissionAiClient {
     }
 
     @Override
-    public List<AiCommissionResult> calculate(AiCommissionRequest request, int year, int month) {
+    public List<AiCommissionResult> calculate(AiCommissionRequest request, int year, int month, boolean auditoria) {
         Map<String, Object> body = Map.of(
             "regras_mongo", request.regrasMongo(),
             "funcionarios", request.funcionarios(),
@@ -44,7 +45,7 @@ class HttpCommissionAiClient implements CommissionAiClient {
         String jsonBody = toJson(body);
 
         HttpRequest httpRequest = HttpRequest.newBuilder()
-            .uri(URI.create(baseUrl + "/commission-algorithm?ano=" + year + "&mes=" + month))
+            .uri(URI.create(baseUrl + "/commission-algorithm?ano=" + year + "&mes=" + month + "&auditoria=" + auditoria))
             .version(HttpClient.Version.HTTP_1_1)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
@@ -66,9 +67,15 @@ class HttpCommissionAiClient implements CommissionAiClient {
                 "AI commission algorithm returned " + httpResponse.statusCode() + ": " + httpResponse.body());
         }
 
-        AiCommissionResult[] response = fromJson(httpResponse.body());
+        String response = httpResponse.body();
+        System.out.println("=== API Python Response ===");
+        System.out.println(response);
+        System.out.println("============================");
 
-        return response == null ? List.of() : Arrays.asList(response);
+        // Então tente fazer parse
+        AiCommissionResult[] results = fromJson(response);
+
+        return results == null ? List.of() : Arrays.asList(results);
     }
 
     private String toJson(Map<String, Object> body) {
@@ -81,9 +88,77 @@ class HttpCommissionAiClient implements CommissionAiClient {
 
     private AiCommissionResult[] fromJson(String body) {
         try {
-            return objectMapper.readValue(body, AiCommissionResult[].class);
+            // Tenta fazer parse como resposta wrapper do Python
+            AiCommissionApiResponse response = objectMapper.readValue(body, AiCommissionApiResponse.class);
+            
+            if (response.resultados() == null || response.resultados().isEmpty()) {
+                return new AiCommissionResult[0];
+            }
+            
+            // Converte de AiCommissionResultWrapper para AiCommissionResult
+            return response.resultados().stream()
+                .map(wrapper -> new AiCommissionResult(
+                    wrapper.matricula(),
+                    wrapper.resultadoFinal().codLoja(),
+                    wrapper.resultadoFinal().codMarca(),
+                    wrapper.resultadoFinal().baseVendas(),
+                    wrapper.resultadoFinal().percComissao(),
+                    wrapper.resultadoFinal().valorComissaoBruto(),
+                    wrapper.resultadoFinal().ajusteProporcional(),
+                    wrapper.resultadoFinal().bonus(),
+                    wrapper.resultadoFinal().valorFinal(),
+                    wrapper.auditoria() != null ? wrapper.auditoria().etapas() : null
+                ))
+                .toArray(AiCommissionResult[]::new);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to parse AI commission response", e);
         }
     }
+}
+
+record AiCommissionApiResponse(
+    boolean sucesso,
+    @JsonProperty("total_funcionarios") int totalFuncionarios,
+    int ano,
+    int mes,
+    List<AiCommissionResultWrapper> resultados
+) {
+    public int total_funcionarios() { return totalFuncionarios; }
+}
+
+record AiCommissionResultWrapper(
+    String matricula,
+    @JsonProperty("resultado_final") AiCommissionResultadoFinal resultadoFinal,
+    AiCommissionAuditoria auditoria
+) {
+    public String matricula() { return matricula; }
+    public AiCommissionResultadoFinal resultado_final() { return resultadoFinal; }
+    public AiCommissionAuditoria auditoria() { return auditoria; }
+}
+
+record AiCommissionResultadoFinal(
+    @JsonProperty("base_vendas") double baseVendas,
+    @JsonProperty("perc_comissao") double percComissao,
+    @JsonProperty("valor_comissao_bruto") double valorComissaoBruto,
+    @JsonProperty("ajuste_proporcional") double ajusteProporcional,
+    double bonus,
+    @JsonProperty("valor_final") double valorFinal,
+    @JsonProperty("cod_loja") String codLoja,
+    @JsonProperty("cod_marca") Integer codMarca
+) {
+    public double base_vendas() { return baseVendas; }
+    public double perc_comissao() { return percComissao; }
+    public double valor_comissao_bruto() { return valorComissaoBruto; }
+    public double ajuste_proporcional() { return ajusteProporcional; }
+    public double bonus() { return bonus; }
+    public double valor_final() { return valorFinal; }
+    public String cod_loja() { return codLoja; }
+    public Integer cod_marca() { return codMarca; }
+}
+
+record AiCommissionAuditoria(
+    @JsonProperty("total_etapas") int totalEtapas,
+    List<EtapaCalculo> etapas
+) {
+    public int total_etapas() { return totalEtapas; }
 }

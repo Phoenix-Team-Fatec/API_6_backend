@@ -44,13 +44,15 @@ public class CommissionController {
     }
 
     @PostMapping("/calculate")
-    public ResponseEntity<?> calculate(@RequestBody CommissionCalculationRequest request) {
+    public ResponseEntity<?> calculate(
+            @RequestBody CommissionCalculationRequest request,
+            @RequestParam(defaultValue = "true") boolean auditoria) {
         try {
             if (request == null) {
                 throw new InvalidCommissionRequestException("Request body is required");
             }
             request.getMonthAsLocalDate();
-            CommissionCalculationResult result = commissionService.calculate(request.toCommand());
+            CommissionCalculationResult result = commissionService.calculate(request.toCommand(), auditoria);
             return ResponseEntity.ok(CommissionCalculationResponse.from(result));
         } catch (DateTimeParseException e) {
             return ResponseEntity.badRequest().body("Invalid month format. Use yyyy-MM");
