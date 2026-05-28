@@ -17,6 +17,17 @@ public interface CommissionService {
 
     /**
      * Calcula comissao por funcionario, loja ou marca em um mes.
+     * @param command comando com tipo de alvo, mês e identificadores
+     * @return resultado com comissões calculadas
      */
     CommissionCalculationResult calculate(CommissionCalculationCommand command);
+
+    /**
+     * Calcula comissao por funcionario, loja ou marca em um mes com auditoria opcional.
+     * @param command comando com tipo de alvo, mês e identificadores
+     * @param auditoria se true, inclui etapas do cálculo no resultado
+     * @return resultado com comissões calculadas e etapas (se auditoria=true)
+     */
+    CommissionCalculationResult calculate(CommissionCalculationCommand command, boolean auditoria);
 }
+

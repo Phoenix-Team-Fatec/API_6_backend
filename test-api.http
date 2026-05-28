@@ -1,0 +1,168 @@
+### Variáveis
+@baseUrl = http://localhost:8080
+@username = "joao.silva@example.com"
+@password = "senha123"
+@email = test@example.com
+
+### ============ ENDPOINTS PÚBLICOS ============
+
+### 1. Health Check (Público)
+GET {{baseUrl}}/health
+
+### ============ USUÁRIOS - CRUD (Público) ============
+
+### 2. Listar todos os usuários
+GET {{baseUrl}}/api/usuarios
+
+### 3. Buscar usuário por email
+GET {{baseUrl}}/api/usuarios/email/{{email}}
+
+### 4. Criar novo usuário
+POST {{baseUrl}}/api/usuarios
+Content-Type: application/json
+
+{
+  "nome": "João Silva",
+  "email": "joao.silva@example.com",
+  "senha": "senha123",
+  "papel": "USER"
+}
+
+### 5. Criar usuário ADMIN
+POST {{baseUrl}}/api/usuarios
+Content-Type: application/json
+
+{
+  "nome": "Admin User",
+  "email": "admin@example.com",
+  "senha": "admin123",
+  "papel": "ADMIN"
+}
+
+### 6. Listar usuários ativos
+GET {{baseUrl}}/api/usuarios/ativos/lista
+
+### 7. Listar usuários por papel
+GET {{baseUrl}}/api/usuarios/papel/ADMIN
+
+### 8. Buscar usuário por ID
+@userId = 6a0dc1ff049756f534022982
+GET {{baseUrl}}/api/usuarios/{{userId}}
+
+### 9. Atualizar usuário
+PUT {{baseUrl}}/api/usuarios/{{userId}}
+Content-Type: application/json
+
+{
+  "nome": "João Silva Atualizado",
+  "email": "joao.silva.novo@example.com",
+  "senha": "novasenha123",
+  "papel": "USER"
+}
+
+### 10. Alterar status do usuário (ativar/desativar)
+PATCH {{baseUrl}}/api/usuarios/{{userId}}/status?ativo=false
+
+### 11. Deletar usuário
+DELETE {{baseUrl}}/api/usuarios/{{userId}}
+
+### ============ COMISSÕES ============
+
+### 12. Listar regras de comissão
+GET {{baseUrl}}/api/rules/commission-rates
+
+### 13. Simular cálculo de comissão
+GET {{baseUrl}}/api/commission/simulate?matricula=12345&month=2025-08
+
+### 14. Calcular comissão
+POST {{baseUrl}}/api/commission/calculate
+Content-Type: application/json
+
+{
+  "month": "2025-07",
+  "targetType": "EMPLOYEE",
+  "matricula": "MATRIC-1"
+}
+
+### ============ FUNCIONÁRIOS ============
+
+### 15. Listar funcionários
+GET {{baseUrl}}/api/funcionarios
+
+### 16. Buscar funcionário por matrícula
+GET {{baseUrl}}/api/funcionarios/12345
+
+### 17. Consolidar hr_records → funcionarios
+POST {{baseUrl}}/api/funcionarios/consolidate
+
+### ============ MARCAS ============
+
+### 18. Listar marcas
+GET {{baseUrl}}/api/brands
+
+### 19. Criar marca
+POST {{baseUrl}}/api/brands
+Content-Type: application/json
+
+{
+  "codigo": "BRAND-001",
+  "nome": "Marca Teste",
+  "descricao": "Descrição da marca"
+}
+
+### ============ LOJAS ============
+
+### 20. Listar lojas
+GET {{baseUrl}}/api/stores
+
+### 21. Criar loja
+POST {{baseUrl}}/api/stores
+Content-Type: application/json
+
+{
+  "codigo": "STORE-001",
+  "nome": "Loja Teste",
+  "descricao": "Descrição da loja"
+}
+
+### ============ PAGINAÇÃO - FUNCIONÁRIOS ============
+
+### 22. Listar funcionários paginados - Primeira página
+GET {{baseUrl}}/api/funcionarios/paginated?page=0&size=15
+
+### 23. Listar funcionários paginados - Segunda página
+GET {{baseUrl}}/api/funcionarios/paginated?page=1&size=15
+
+### ============ PAGINAÇÃO - MARCAS ============
+
+### 24. Listar marcas paginadas
+GET {{baseUrl}}/api/brands/paginated?page=0&size=15
+
+### 25. Listar marcas paginadas - Página 2
+GET {{baseUrl}}/api/brands/paginated?page=1&size=15
+
+### 26. Listar marcas filtradas com paginação por nome
+GET {{baseUrl}}/api/brands/paginated?nome=Premium&page=0&size=15
+
+### 27. Listar marcas filtradas por código com paginação
+GET {{baseUrl}}/api/brands/paginated?codigo=1&page=0&size=15
+
+### ============ PAGINAÇÃO - LOJAS ============
+
+### 28. Listar lojas paginadas
+GET {{baseUrl}}/api/stores/paginated?page=0&size=15
+
+### 29. Listar lojas paginadas - Página 2
+GET {{baseUrl}}/api/stores/paginated?page=1&size=15
+
+### 30. Listar lojas filtradas com paginação por código
+GET {{baseUrl}}/api/stores/paginated?codigo=10&page=0&size=15
+
+### 31. Listar lojas filtradas por nome com paginação
+GET {{baseUrl}}/api/stores/paginated?nome=Centro&page=0&size=15
+
+### ============ NOTAS ============
+# - Use a extensão "REST Client" do VS Code para executar estes testes
+# - Todos os endpoints são públicos (sem autenticação necessária)
+# - Paginação: page começa em 0, size padrão é 15 itens por página
+# - Respostas incluem: content, pageable, totalElements, totalPages

@@ -94,8 +94,8 @@ class CommissionServiceTest {
         when(salesRepo.findByCodLojaAndDateRef(35, JULY)).thenReturn(List.of(sale));
         when(rateRepo.findFirstByCodMarcaAndCodCargoAndIsVigenteTrueAndDeletedAtNullOrderByVersaoDesc(10, 100)).thenReturn(Optional.of(rate));
         when(exceptionRepo.findByYearMonth(JULY)).thenReturn(List.of());
-        when(aiClient.calculate(any(), eq(2025), eq(7))).thenReturn(List.of(
-            new AiCommissionResult("M1", "35", 10, 5000.0, 0.025, 125.0, 1.0, 0.0, 125.0)
+        when(aiClient.calculate(any(), eq(2025), eq(7), anyBoolean())).thenReturn(List.of(
+            new AiCommissionResult("M1", "35", 10, 5000.0, 0.025, 125.0, 1.0, 0.0, 125.0, null)
         ));
 
         var response = service.calculate(new CommissionCalculationCommand(
@@ -117,7 +117,7 @@ class CommissionServiceTest {
         assertThat(response.appliedRuleDetails().get(0).descricao()).isEqualTo("Regra PRETO");
 
         var requestCaptor = org.mockito.ArgumentCaptor.forClass(AiCommissionRequest.class);
-        verify(aiClient).calculate(requestCaptor.capture(), eq(2025), eq(7));
+        verify(aiClient).calculate(requestCaptor.capture(), eq(2025), eq(7), eq(true));
         var aiRequest = requestCaptor.getValue();
         assertThat(aiRequest.funcionarios()).hasSize(1);
         assertThat(aiRequest.funcionarios().get(0).matricula()).isEqualTo("M1");
@@ -144,15 +144,15 @@ class CommissionServiceTest {
         when(salesRepo.findByCodLojaAndDateRef(35, JULY)).thenReturn(List.of());
         when(rateRepo.findByDataAndIsVigenteTrueAndDeletedAtNull(JULY)).thenReturn(List.of(monthlyOverride));
         when(exceptionRepo.findByYearMonth(JULY)).thenReturn(List.of());
-        when(aiClient.calculate(any(), eq(2025), eq(7))).thenReturn(List.of(
-            new AiCommissionResult("M1", "35", 10, 0.0, 0.06, 0.0, 1.0, 0.0, 0.0)
+        when(aiClient.calculate(any(), eq(2025), eq(7), anyBoolean())).thenReturn(List.of(
+            new AiCommissionResult("M1", "35", 10, 0.0, 0.06, 0.0, 1.0, 0.0, 0.0, null)
         ));
 
         service.calculate(new CommissionCalculationCommand(
             "2025-07", CommissionTargetType.EMPLOYEE, "M1", null, null));
 
         var requestCaptor = org.mockito.ArgumentCaptor.forClass(AiCommissionRequest.class);
-        verify(aiClient).calculate(requestCaptor.capture(), eq(2025), eq(7));
+        verify(aiClient).calculate(requestCaptor.capture(), eq(2025), eq(7), eq(true));
         var regrasMongo = requestCaptor.getValue().regrasMongo();
 
         assertThat(regrasMongo).hasSize(1);
@@ -182,9 +182,9 @@ class CommissionServiceTest {
         when(salesRepo.findByCodLojaAndDateRef(35, JULY)).thenReturn(List.of(sale1, sale2));
         when(rateRepo.findFirstByCodMarcaAndCodCargoAndIsVigenteTrueAndDeletedAtNullOrderByVersaoDesc(10, 100)).thenReturn(Optional.of(rate));
         when(exceptionRepo.findByYearMonth(JULY)).thenReturn(List.of());
-        when(aiClient.calculate(any(), eq(2025), eq(7))).thenReturn(List.of(
-            new AiCommissionResult("M1", "35", 10, 5000.0, 0.025, 125.0, 1.0, 0.0, 125.0),
-            new AiCommissionResult("M2", "35", 10, 7000.0, 0.025, 175.0, 1.0, 0.0, 175.0)
+        when(aiClient.calculate(any(), eq(2025), eq(7), anyBoolean())).thenReturn(List.of(
+            new AiCommissionResult("M1", "35", 10, 5000.0, 0.025, 125.0, 1.0, 0.0, 125.0, null),
+            new AiCommissionResult("M2", "35", 10, 7000.0, 0.025, 175.0, 1.0, 0.0, 175.0, null)
         ));
 
         var response = service.calculate(new CommissionCalculationCommand(
@@ -210,9 +210,9 @@ class CommissionServiceTest {
         when(salesRepo.findByCodLojaAndDateRef(36, JULY)).thenReturn(List.of(sale2));
         when(rateRepo.findFirstByCodMarcaAndCodCargoAndIsVigenteTrueAndDeletedAtNullOrderByVersaoDesc(10, 100)).thenReturn(Optional.of(rate));
         when(exceptionRepo.findByYearMonth(JULY)).thenReturn(List.of());
-        when(aiClient.calculate(any(), eq(2025), eq(7))).thenReturn(List.of(
-            new AiCommissionResult("M1", "35", 10, 5000.0, 0.025, 125.0, 1.0, 0.0, 125.0),
-            new AiCommissionResult("M2", "36", 10, 7000.0, 0.025, 175.0, 1.0, 0.0, 175.0)
+        when(aiClient.calculate(any(), eq(2025), eq(7), anyBoolean())).thenReturn(List.of(
+            new AiCommissionResult("M1", "35", 10, 5000.0, 0.025, 125.0, 1.0, 0.0, 125.0, null),
+            new AiCommissionResult("M2", "36", 10, 7000.0, 0.025, 175.0, 1.0, 0.0, 175.0, null)
         ));
 
         var response = service.calculate(new CommissionCalculationCommand(

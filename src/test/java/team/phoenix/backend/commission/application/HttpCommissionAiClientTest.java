@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.sun.net.httpserver.HttpServer;
@@ -37,7 +36,7 @@ class HttpCommissionAiClientTest {
                 List.of()
             );
 
-            client.calculate(request, 2025, 7);
+            client.calculate(request, 2025, 7, true);
 
             assertThat(capturedBody.get()).contains("\"data_admissao\":\"2013-08-08\"");
             assertThat(capturedBody.get()).contains("\"data_demissao\":\"2025-07-15\"");
