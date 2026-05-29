@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import team.phoenix.backend.user.api.dto.CriarUsuarioRequest;
+import team.phoenix.backend.user.api.dto.LoginRequest;
+import team.phoenix.backend.user.api.dto.LoginResponse;
 import team.phoenix.backend.user.api.dto.UsuarioResponse;
 import team.phoenix.backend.domain.model.Usuario;
 import team.phoenix.backend.user.application.UsuarioService;
@@ -12,7 +14,6 @@ import team.phoenix.backend.user.application.UsuarioService;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// Controlador REST para gerenciamento de usuários
 @RestController
 @RequestMapping("/api/usuarios")
 @CrossOrigin
@@ -21,7 +22,17 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
-    // POST /api/usuarios - Criar novo usuário
+    // POST /api/usuarios/login - Autenticar usuário e retornar token JWT
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+        try {
+            LoginResponse response = usuarioService.login(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
+
     @PostMapping
     public ResponseEntity<UsuarioResponse> criarUsuario(@RequestBody CriarUsuarioRequest request) {
         try {
@@ -32,7 +43,6 @@ public class UsuarioController {
         }
     }
 
-    // GET /api/usuarios/:id - Buscar usuário por ID
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioResponse> buscarPorId(@PathVariable String id) {
         return usuarioService.buscarPorId(id)
@@ -40,7 +50,6 @@ public class UsuarioController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // GET /api/usuarios/email/:email - Buscar usuário por email
     @GetMapping("/email/{email}")
     public ResponseEntity<UsuarioResponse> buscarPorEmail(@PathVariable String email) {
         return usuarioService.buscarPorEmail(email)
@@ -48,7 +57,6 @@ public class UsuarioController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // GET /api/usuarios - Listar todos os usuários
     @GetMapping
     public ResponseEntity<List<UsuarioResponse>> listarTodos() {
         List<UsuarioResponse> usuarios = usuarioService.listarTodos()
@@ -58,7 +66,6 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarios);
     }
 
-    // GET /api/usuarios/ativos/lista - Listar usuários ativos
     @GetMapping("/ativos/lista")
     public ResponseEntity<List<UsuarioResponse>> listarAtivos() {
         List<UsuarioResponse> usuarios = usuarioService.listarAtivos()
@@ -68,7 +75,6 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarios);
     }
 
-    // GET /api/usuarios/papel/:papel - Listar usuários por papel
     @GetMapping("/papel/{papel}")
     public ResponseEntity<List<UsuarioResponse>> listarPorPapel(@PathVariable String papel) {
         List<UsuarioResponse> usuarios = usuarioService.listarPorPapel(papel)
@@ -78,7 +84,6 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarios);
     }
 
-    // PUT /api/usuarios/:id - Atualizar usuário
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioResponse> atualizar(@PathVariable String id, @RequestBody CriarUsuarioRequest request) {
         try {
@@ -89,7 +94,6 @@ public class UsuarioController {
         }
     }
 
-    // PATCH /api/usuarios/:id/status - Ativar/desativar usuário
     @PatchMapping("/{id}/status")
     public ResponseEntity<UsuarioResponse> alterarStatus(@PathVariable String id, @RequestParam Boolean ativo) {
         try {
@@ -100,7 +104,6 @@ public class UsuarioController {
         }
     }
 
-    // DELETE /api/usuarios/:id - Deletar usuário (soft delete)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable String id) {
         try {

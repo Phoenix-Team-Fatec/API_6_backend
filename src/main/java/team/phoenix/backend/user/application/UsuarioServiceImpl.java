@@ -3,9 +3,13 @@ package team.phoenix.backend.user.application;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import team.phoenix.backend.config.security.JwtService;
 import team.phoenix.backend.domain.model.Usuario;
 import team.phoenix.backend.domain.repository.UsuarioRepository;
 import team.phoenix.backend.user.api.dto.CriarUsuarioRequest;
+import team.phoenix.backend.user.api.dto.LoginRequest;
+import team.phoenix.backend.user.api.dto.LoginResponse;
+import team.phoenix.backend.user.api.dto.UsuarioResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +23,29 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+
+    // Validar credenciais e retornar token JWT
+    @Override
+    public LoginResponse login(LoginRequest request) {
+        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("Email ou senha inválidos"));
+
+        if (!Boolean.TRUE.equals(usuario.getAtivo())) {
+            throw new IllegalArgumentException("Usuário inativo");
+        }
+
+        if (!passwordEncoder.matches(request.getSenha(), usuario.getSenha())) {
+            throw new IllegalArgumentException("Email ou senha inválidos");
+        }
+
+        String token = jwtService.generateToken(usuario.getEmail(), usuario.getPapel());
+
+        return LoginResponse.builder()
+                .token(token)
+                .usuario(UsuarioResponse.from(usuario))
+                .build();
+    }
 
     @Override
     public Usuario criarUsuario(CriarUsuarioRequest request) {
