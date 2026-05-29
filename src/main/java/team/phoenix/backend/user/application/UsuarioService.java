@@ -2,11 +2,16 @@ package team.phoenix.backend.user.application;
 
 import team.phoenix.backend.domain.model.Usuario;
 import team.phoenix.backend.user.api.dto.CriarUsuarioRequest;
+import team.phoenix.backend.user.api.dto.LoginRequest;
+import team.phoenix.backend.user.api.dto.LoginResponse;
 import java.util.List;
 import java.util.Optional;
 
 // Interface do serviço de usuário
 public interface UsuarioService {
+    // Autenticar usuário e retornar token JWT
+    LoginResponse login(LoginRequest request);
+
     // Criar novo usuário
     Usuario criarUsuario(CriarUsuarioRequest request);
 

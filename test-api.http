@@ -1,23 +1,29 @@
-### Variáveis
+### Variáveis globais
 @baseUrl = http://localhost:8080
-@username = "joao.silva@example.com"
-@password = "senha123"
-@email = test@example.com
+@email = joao.silva@example.com
+@userId = 6a0dc1ff049756f534022982
+
+### ============ AUTENTICAÇÃO ============
+
+### 1. Login - executa esta requisição primeiro para capturar o token automaticamente
+# @name login
+POST {{baseUrl}}/api/usuarios/login
+Content-Type: application/json
+
+{
+  "email": "joao.silva@example.com",
+  "senha": "senha123"
+}
+
+### Token capturado automaticamente da resposta do login acima
+@token = {{login.response.body.token}}
 
 ### ============ ENDPOINTS PÚBLICOS ============
 
-### 1. Health Check (Público)
+### 2. Health Check (público - sem token)
 GET {{baseUrl}}/health
 
-### ============ USUÁRIOS - CRUD (Público) ============
-
-### 2. Listar todos os usuários
-GET {{baseUrl}}/api/usuarios
-
-### 3. Buscar usuário por email
-GET {{baseUrl}}/api/usuarios/email/{{email}}
-
-### 4. Criar novo usuário
+### 3. Criar usuário comum (público - sem token)
 POST {{baseUrl}}/api/usuarios
 Content-Type: application/json
 
@@ -28,7 +34,7 @@ Content-Type: application/json
   "papel": "USER"
 }
 
-### 5. Criar usuário ADMIN
+### 4. Criar usuário ADMIN (público - sem token)
 POST {{baseUrl}}/api/usuarios
 Content-Type: application/json
 
@@ -39,19 +45,32 @@ Content-Type: application/json
   "papel": "ADMIN"
 }
 
-### 6. Listar usuários ativos
-GET {{baseUrl}}/api/usuarios/ativos/lista
+### ============ USUÁRIOS (protegido - requer token) ============
 
-### 7. Listar usuários por papel
-GET {{baseUrl}}/api/usuarios/papel/ADMIN
+### 5. Listar todos os usuários
+GET {{baseUrl}}/api/usuarios
+Authorization: Bearer {{token}}
 
-### 8. Buscar usuário por ID
-@userId = 6a0dc1ff049756f534022982
+### 6. Buscar usuário por email
+GET {{baseUrl}}/api/usuarios/email/{{email}}
+Authorization: Bearer {{token}}
+
+### 7. Buscar usuário por ID
 GET {{baseUrl}}/api/usuarios/{{userId}}
+Authorization: Bearer {{token}}
 
-### 9. Atualizar usuário
+### 8. Listar usuários ativos
+GET {{baseUrl}}/api/usuarios/ativos/lista
+Authorization: Bearer {{token}}
+
+### 9. Listar usuários por papel
+GET {{baseUrl}}/api/usuarios/papel/ADMIN
+Authorization: Bearer {{token}}
+
+### 10. Atualizar usuário
 PUT {{baseUrl}}/api/usuarios/{{userId}}
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "nome": "João Silva Atualizado",
@@ -60,23 +79,28 @@ Content-Type: application/json
   "papel": "USER"
 }
 
-### 10. Alterar status do usuário (ativar/desativar)
+### 11. Alterar status do usuário (ativar/desativar)
 PATCH {{baseUrl}}/api/usuarios/{{userId}}/status?ativo=false
+Authorization: Bearer {{token}}
 
-### 11. Deletar usuário
+### 12. Deletar usuário
 DELETE {{baseUrl}}/api/usuarios/{{userId}}
+Authorization: Bearer {{token}}
 
-### ============ COMISSÕES ============
+### ============ COMISSÕES (protegido - requer token) ============
 
-### 12. Listar regras de comissão
+### 13. Listar regras de comissão
 GET {{baseUrl}}/api/rules/commission-rates
+Authorization: Bearer {{token}}
 
-### 13. Simular cálculo de comissão
+### 14. Simular cálculo de comissão
 GET {{baseUrl}}/api/commission/simulate?matricula=12345&month=2025-08
+Authorization: Bearer {{token}}
 
-### 14. Calcular comissão
+### 15. Calcular comissão
 POST {{baseUrl}}/api/commission/calculate
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "month": "2025-07",
@@ -84,25 +108,38 @@ Content-Type: application/json
   "matricula": "MATRIC-1"
 }
 
-### ============ FUNCIONÁRIOS ============
+### ============ FUNCIONÁRIOS (protegido - requer token) ============
 
-### 15. Listar funcionários
+### 16. Listar funcionários
 GET {{baseUrl}}/api/funcionarios
+Authorization: Bearer {{token}}
 
-### 16. Buscar funcionário por matrícula
+### 17. Buscar funcionário por matrícula
 GET {{baseUrl}}/api/funcionarios/12345
+Authorization: Bearer {{token}}
 
-### 17. Consolidar hr_records → funcionarios
+### 18. Listar funcionários paginados - Primeira página
+GET {{baseUrl}}/api/funcionarios/paginated?page=0&size=15
+Authorization: Bearer {{token}}
+
+### 19. Listar funcionários paginados - Segunda página
+GET {{baseUrl}}/api/funcionarios/paginated?page=1&size=15
+Authorization: Bearer {{token}}
+
+### 20. Consolidar hr_records → funcionarios
 POST {{baseUrl}}/api/funcionarios/consolidate
+Authorization: Bearer {{token}}
 
-### ============ MARCAS ============
+### ============ MARCAS (protegido - requer token) ============
 
-### 18. Listar marcas
+### 21. Listar marcas
 GET {{baseUrl}}/api/brands
+Authorization: Bearer {{token}}
 
-### 19. Criar marca
+### 22. Criar marca
 POST {{baseUrl}}/api/brands
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "codigo": "BRAND-001",
@@ -110,14 +147,32 @@ Content-Type: application/json
   "descricao": "Descrição da marca"
 }
 
-### ============ LOJAS ============
+### 23. Listar marcas paginadas
+GET {{baseUrl}}/api/brands/paginated?page=0&size=15
+Authorization: Bearer {{token}}
 
-### 20. Listar lojas
+### 24. Listar marcas paginadas - Página 2
+GET {{baseUrl}}/api/brands/paginated?page=1&size=15
+Authorization: Bearer {{token}}
+
+### 25. Listar marcas filtradas por nome
+GET {{baseUrl}}/api/brands/paginated?nome=Premium&page=0&size=15
+Authorization: Bearer {{token}}
+
+### 26. Listar marcas filtradas por código
+GET {{baseUrl}}/api/brands/paginated?codigo=1&page=0&size=15
+Authorization: Bearer {{token}}
+
+### ============ LOJAS (protegido - requer token) ============
+
+### 27. Listar lojas
 GET {{baseUrl}}/api/stores
+Authorization: Bearer {{token}}
 
-### 21. Criar loja
+### 28. Criar loja
 POST {{baseUrl}}/api/stores
 Content-Type: application/json
+Authorization: Bearer {{token}}
 
 {
   "codigo": "STORE-001",
@@ -125,44 +180,26 @@ Content-Type: application/json
   "descricao": "Descrição da loja"
 }
 
-### ============ PAGINAÇÃO - FUNCIONÁRIOS ============
-
-### 22. Listar funcionários paginados - Primeira página
-GET {{baseUrl}}/api/funcionarios/paginated?page=0&size=15
-
-### 23. Listar funcionários paginados - Segunda página
-GET {{baseUrl}}/api/funcionarios/paginated?page=1&size=15
-
-### ============ PAGINAÇÃO - MARCAS ============
-
-### 24. Listar marcas paginadas
-GET {{baseUrl}}/api/brands/paginated?page=0&size=15
-
-### 25. Listar marcas paginadas - Página 2
-GET {{baseUrl}}/api/brands/paginated?page=1&size=15
-
-### 26. Listar marcas filtradas com paginação por nome
-GET {{baseUrl}}/api/brands/paginated?nome=Premium&page=0&size=15
-
-### 27. Listar marcas filtradas por código com paginação
-GET {{baseUrl}}/api/brands/paginated?codigo=1&page=0&size=15
-
-### ============ PAGINAÇÃO - LOJAS ============
-
-### 28. Listar lojas paginadas
+### 29. Listar lojas paginadas
 GET {{baseUrl}}/api/stores/paginated?page=0&size=15
+Authorization: Bearer {{token}}
 
-### 29. Listar lojas paginadas - Página 2
+### 30. Listar lojas paginadas - Página 2
 GET {{baseUrl}}/api/stores/paginated?page=1&size=15
+Authorization: Bearer {{token}}
 
-### 30. Listar lojas filtradas com paginação por código
+### 31. Listar lojas filtradas por código
 GET {{baseUrl}}/api/stores/paginated?codigo=10&page=0&size=15
+Authorization: Bearer {{token}}
 
-### 31. Listar lojas filtradas por nome com paginação
+### 32. Listar lojas filtradas por nome
 GET {{baseUrl}}/api/stores/paginated?nome=Centro&page=0&size=15
+Authorization: Bearer {{token}}
 
 ### ============ NOTAS ============
 # - Use a extensão "REST Client" do VS Code para executar estes testes
-# - Todos os endpoints são públicos (sem autenticação necessária)
+# - Execute a requisição de Login (nº 1) antes de qualquer rota protegida
+# - O token é capturado automaticamente via @token = {{login.response.body.token}}
+# - Rotas públicas: POST /login, POST /api/usuarios, GET /health
+# - Todas as demais rotas exigem Authorization: Bearer {{token}}
 # - Paginação: page começa em 0, size padrão é 15 itens por página
-# - Respostas incluem: content, pageable, totalElements, totalPages
