@@ -18,9 +18,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import team.phoenix.backend.ai.application.AiIngestCodeRequest;
 import team.phoenix.backend.ai.application.AiIngestRulesRequest;
 import team.phoenix.backend.ai.application.AiIntegrationClient;
+import team.phoenix.backend.WebMvcSecurityMocks;
 
 @WebMvcTest(AiAdminController.class)
-class AiAdminControllerTest {
+class AiAdminControllerTest extends WebMvcSecurityMocks {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean AiIntegrationClient aiIntegrationClient;

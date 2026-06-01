@@ -74,6 +74,17 @@ public class RulesController {
         }
     }
 
+    @PostMapping("/scoped-rate-overrides")
+    public ResponseEntity<?> createScopedRateOverride(@RequestBody CreateScopedRateRuleRequest req) {
+        try {
+            var created = rulesService.createScopedRateOverride(req.toMonthlyException());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(MonthlyExceptionResponse.from(created));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao criar regra escopada: " + e.getMessage());
+        }
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateRate(@PathVariable String id, @RequestBody CreateCommissionRateRequest req) {
         try {

@@ -24,9 +24,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import team.phoenix.backend.domain.model.Store;
 import team.phoenix.backend.catalog.store.application.StoreService;
+import team.phoenix.backend.WebMvcSecurityMocks;
 
 @WebMvcTest(StoreController.class)
-class StoreControllerTest {
+class StoreControllerTest extends WebMvcSecurityMocks {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean StoreService storeService;

@@ -26,11 +26,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import team.phoenix.backend.domain.model.CommissionRate;
 import team.phoenix.backend.domain.model.ExceptionType;
 import team.phoenix.backend.domain.model.MonthlyException;
+import team.phoenix.backend.domain.model.RateType;
 import team.phoenix.backend.rules.application.GeneratedRuleResult;
 import team.phoenix.backend.rules.application.RulesService;
+import team.phoenix.backend.WebMvcSecurityMocks;
 
 @WebMvcTest(RulesController.class)
-class RulesControllerTest {
+class RulesControllerTest extends WebMvcSecurityMocks {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean RulesService rulesService;
@@ -220,6 +222,37 @@ class RulesControllerTest {
             .andExpect(jsonPath("$.rules[0].textoOriginal").value("Criar regra de 5%"));
     }
 
+    @Test void createScopedRateOverride_returnsCreatedException() throws Exception {
+        var saved = MonthlyException.builder()
+            .id("exception-1")
+            .yearMonth(LocalDate.of(2025, 7, 1))
+            .type(ExceptionType.RATE_OVERRIDE)
+            .codLoja(75)
+            .overrideRate(0.06)
+            .rateType(RateType.ABSOLUTE)
+            .startDate(LocalDate.of(2025, 7, 1))
+            .endDate(LocalDate.of(2025, 7, 31))
+            .appliesToManagers(true)
+            .build();
+        when(rulesService.createScopedRateOverride(any())).thenReturn(saved);
+
+        mockMvc.perform(post("/api/rules/scoped-rate-overrides")
+                .contentType("application/json")
+                .content("{\"yearMonth\":\"2025-07\",\"scope\":{\"codLoja\":75},\"effect\":{\"type\":\"ABSOLUTE\",\"rate\":0.06}}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value("exception-1"))
+            .andExpect(jsonPath("$.codLoja").value(75))
+            .andExpect(jsonPath("$.overrideRate").value(0.06))
+            .andExpect(jsonPath("$.rateType").value("ABSOLUTE"));
+
+        verify(rulesService).createScopedRateOverride(argThat(exception ->
+            exception.getYearMonth().equals(LocalDate.of(2025, 7, 1))
+                && exception.getCodLoja().equals(75)
+                && exception.getOverrideRate().equals(0.06)
+                && exception.getRateType() == RateType.ABSOLUTE
+        ));
+    }
+
     @Test void updateRate_withValidData_returnsOk() throws Exception {
         var updated = CommissionRate.builder()
             .id("123")
@@ -380,6 +413,20 @@ class RulesControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].alternateCodLoja").value(5))
             .andExpect(jsonPath("$[0].daysWorked").value(10));
+    }
+
+    @Test void listExceptions_rateOverride_returnsStoreScope() throws Exception {
+        var ex = MonthlyException.builder().yearMonth(LocalDate.of(2025,7,1))
+            .type(ExceptionType.RATE_OVERRIDE).codLoja(75)
+            .overrideRate(0.06).rateType(team.phoenix.backend.domain.model.RateType.ABSOLUTE)
+            .build();
+        when(rulesService.listExceptions(LocalDate.of(2025,7,1), null, null)).thenReturn(List.of(ex));
+
+        mockMvc.perform(get("/api/rules/exceptions").param("month", "2025-07"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].codLoja").value(75))
+            .andExpect(jsonPath("$[0].overrideRate").value(0.06))
+            .andExpect(jsonPath("$[0].rateType").value("ABSOLUTE"));
     }
 
     @Test void listExceptions_invalidMonthFormat_returns400() throws Exception {

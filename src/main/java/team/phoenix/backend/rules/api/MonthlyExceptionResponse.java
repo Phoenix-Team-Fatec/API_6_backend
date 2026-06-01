@@ -15,6 +15,7 @@ public record MonthlyExceptionResponse(
     LocalDate startDate,
     LocalDate endDate,
     Double amount,
+    Integer codLoja,
     Integer codMarca,
     Integer codCargo,
     Double overrideRate,
@@ -28,7 +29,7 @@ public record MonthlyExceptionResponse(
         return new MonthlyExceptionResponse(
             e.getId(), e.getYearMonth(), e.getType(), e.getMatricula(),
             e.getStartDate(), e.getEndDate(), e.getAmount(),
-            e.getCodMarca(), e.getCodCargo(), e.getOverrideRate(),
+            e.getCodLoja(), e.getCodMarca(), e.getCodCargo(), e.getOverrideRate(),
             e.getRateType(), e.isAppliesToManagers(),
             e.getAlternateCodLoja(), e.getDaysWorked(), e.getBonusTiers()
         );

@@ -24,9 +24,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import team.phoenix.backend.domain.model.Brand;
 import team.phoenix.backend.catalog.brand.application.BrandService;
+import team.phoenix.backend.WebMvcSecurityMocks;
 
 @WebMvcTest(BrandController.class)
-class BrandControllerTest {
+class BrandControllerTest extends WebMvcSecurityMocks {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean BrandService brandService;

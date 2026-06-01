@@ -171,6 +171,9 @@ public class RulesServiceImpl implements RulesService {
         if ("intercorrencia".equals(response.tipo())) {
             return persistGeneratedIntercorrencias(response);
         }
+        if ("rate_override".equals(response.tipo())) {
+            return persistGeneratedRateOverrides(response);
+        }
 
         throw new IllegalArgumentException("Unsupported AI response type: " + response.tipo());
     }
@@ -227,6 +230,18 @@ public class RulesServiceImpl implements RulesService {
         return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created);
     }
 
+    private GeneratedRuleResult persistGeneratedRateOverrides(AiAgentResponse response) {
+        if (response.rateOverrides() == null || response.rateOverrides().isEmpty()) {
+            throw new IllegalArgumentException("AI rate_override response must include rate_overrides");
+        }
+
+        List<MonthlyException> created = response.rateOverrides().stream()
+            .map(this::createExceptionFromAiScopedRateRule)
+            .toList();
+
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created);
+    }
+
     private MonthlyException createExceptionFromAiIntercorrencia(AiAgentIntercorrencia intercorrencia) {
         MonthlyException exception = MonthlyException.builder()
             .yearMonth(firstDayOfMonth(intercorrencia.vigenciaInicio()))
@@ -253,6 +268,58 @@ public class RulesServiceImpl implements RulesService {
         }
 
         return exceptionRepo.save(exception);
+    }
+
+    private MonthlyException createExceptionFromAiScopedRateRule(team.phoenix.backend.ai.application.AiScopedRateRule aiRule) {
+        if (aiRule.escopo() == null) {
+            throw new IllegalArgumentException("AI rate_override item must include escopo");
+        }
+        if (aiRule.efeito() == null) {
+            throw new IllegalArgumentException("AI rate_override item must include efeito");
+        }
+
+        MonthlyException exception = MonthlyException.builder()
+            .yearMonth(firstDayOfMonth(aiRule.vigenciaInicio()))
+            .startDate(aiRule.vigenciaInicio())
+            .endDate(aiRule.vigenciaFim())
+            .matricula(aiRule.escopo().matricula())
+            .codLoja(aiRule.escopo().codLoja())
+            .codMarca(aiRule.escopo().codMarca())
+            .codCargo(aiRule.escopo().codCargo())
+            .rateType(mapAiRuleEffectType(aiRule.efeito().tipo()))
+            .overrideRate(aiRule.efeito().valor())
+            .build();
+
+        return createScopedRateOverride(exception);
+    }
+
+    private RateType mapAiRuleEffectType(String type) {
+        return switch (type) {
+            case "percentual_absoluto" -> RateType.ABSOLUTE;
+            case "percentual_adicional" -> RateType.ADDITIVE;
+            default -> throw new IllegalArgumentException("Unsupported AI rate_override effect type: " + type);
+        };
+    }
+
+    @Override
+    public MonthlyException createScopedRateOverride(MonthlyException rule) {
+        validateScopedRateOverride(rule);
+
+        LocalDate yearMonth = rule.getYearMonth().withDayOfMonth(1);
+        LocalDate startDate = rule.getStartDate() == null ? yearMonth : rule.getStartDate();
+        LocalDate endDate = rule.getEndDate() == null
+            ? yearMonth.withDayOfMonth(yearMonth.lengthOfMonth())
+            : rule.getEndDate();
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("endDate must be on or after startDate");
+        }
+
+        rule.setType(ExceptionType.RATE_OVERRIDE);
+        rule.setYearMonth(yearMonth);
+        rule.setStartDate(startDate);
+        rule.setEndDate(endDate);
+        rule.setAppliesToManagers(true);
+        return exceptionRepo.save(rule);
     }
 
     private String resolveBrandName(Integer codMarca) {
@@ -508,6 +575,25 @@ public class RulesServiceImpl implements RulesService {
         }
         if (rule.getDescriCargo() != null && rule.getDescriCargo().isBlank()) {
             throw new IllegalArgumentException("descriCargo is required");
+        }
+    }
+
+    private void validateScopedRateOverride(MonthlyException rule) {
+        if (rule == null) {
+            throw new IllegalArgumentException("request body is required");
+        }
+        if (rule.getYearMonth() == null) {
+            throw new IllegalArgumentException("yearMonth is required");
+        }
+        if (rule.getRateType() == null) {
+            throw new IllegalArgumentException("rateType is required");
+        }
+        if (rule.getOverrideRate() == null || rule.getOverrideRate() < 0) {
+            throw new IllegalArgumentException("overrideRate must be greater than or equal to zero");
+        }
+        boolean hasMatricula = rule.getMatricula() != null && !rule.getMatricula().isBlank();
+        if (!hasMatricula && rule.getCodLoja() == null && rule.getCodMarca() == null && rule.getCodCargo() == null) {
+            throw new IllegalArgumentException("at least one scope field is required");
         }
     }
 

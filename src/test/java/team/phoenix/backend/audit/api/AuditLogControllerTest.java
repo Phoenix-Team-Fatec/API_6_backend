@@ -21,9 +21,10 @@ import team.phoenix.backend.audit.domain.AuditAction;
 import team.phoenix.backend.audit.domain.AuditLogQuery;
 import team.phoenix.backend.audit.domain.AuditLogResult;
 import team.phoenix.backend.audit.domain.AuditResourceType;
+import team.phoenix.backend.WebMvcSecurityMocks;
 
 @WebMvcTest(AuditLogController.class)
-class AuditLogControllerTest {
+class AuditLogControllerTest extends WebMvcSecurityMocks {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean AuditLogService auditLogService;

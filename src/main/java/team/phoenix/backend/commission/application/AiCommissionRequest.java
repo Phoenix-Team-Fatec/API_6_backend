@@ -85,6 +85,11 @@ public record AiCommissionRequest(
             rules.add(override);
         }
 
+        Map<String, Object> scopedRateOverrides = mapScopedRateOverrides(exceptions, month);
+        if (scopedRateOverrides != null) {
+            rules.add(scopedRateOverrides);
+        }
+
         Map<String, Object> exception = mapExceptions(exceptions);
         if (exception != null) {
             rules.add(exception);
@@ -124,7 +129,63 @@ public record AiCommissionRequest(
         return document;
     }
 
+    private static Map<String, Object> mapScopedRateOverrides(List<MonthlyException> exceptions, LocalDate month) {
+        if (exceptions == null || exceptions.isEmpty()) {
+            return null;
+        }
+
+        var items = exceptions.stream()
+            .filter(exception -> exception.getType() == ExceptionType.RATE_OVERRIDE)
+            .filter(exception -> exception.getRateType() != null)
+            .filter(exception -> exception.getOverrideRate() != null)
+            .filter(AiCommissionRequest::hasScope)
+            .map(exception -> mapScopedRateOverride(exception, month))
+            .toList();
+
+        if (items.isEmpty()) {
+            return null;
+        }
+
+        Map<String, Object> document = new LinkedHashMap<>();
+        document.put("tipo", "rate_override");
+        document.put("rate_overrides", items);
+        return document;
+    }
+
+    private static Map<String, Object> mapScopedRateOverride(MonthlyException exception, LocalDate month) {
+        Map<String, Object> scope = new LinkedHashMap<>();
+        scope.put("matricula", exception.getMatricula());
+        scope.put("cod_loja", exception.getCodLoja());
+        scope.put("cod_marca", exception.getCodMarca());
+        scope.put("cod_cargo", exception.getCodCargo());
+
+        Map<String, Object> effect = new LinkedHashMap<>();
+        effect.put("tipo", exception.getRateType() == RateType.ABSOLUTE
+            ? "percentual_absoluto"
+            : "percentual_adicional");
+        effect.put("valor", exception.getOverrideRate());
+
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("descricao", "Regra escopada de comissao");
+        item.put("vigencia_inicio", resolveStartDate(exception));
+        item.put("vigencia_fim", resolveEndDate(exception, month));
+        item.put("escopo", scope);
+        item.put("efeito", effect);
+        return item;
+    }
+
+    private static boolean hasScope(MonthlyException exception) {
+        return exception.getMatricula() != null
+            || exception.getCodLoja() != null
+            || exception.getCodMarca() != null
+            || exception.getCodCargo() != null;
+    }
+
     private static Map<String, Object> mapExceptions(List<MonthlyException> exceptions) {
+        if (exceptions == null || exceptions.isEmpty()) {
+            return null;
+        }
+
         var items = exceptions.stream()
             .map(AiCommissionRequest::mapException)
             .filter(Objects::nonNull)
@@ -161,9 +222,8 @@ public record AiCommissionRequest(
         }
         return switch (exception.getType()) {
             case BONUS_FIXED -> "bonus_fixo";
-            case RATE_OVERRIDE -> exception.getRateType() == RateType.ADDITIVE ? "perc_bonus" : null;
             case SALES_BONUS_TIER -> exception.getAmount() == null ? null : "bonus_venda";
-            case ABSENCE, VACATION, MATERNITY_LEAVE, STORE_BONUS_TIER, MULTI_STORE -> null;
+            case ABSENCE, VACATION, MATERNITY_LEAVE, RATE_OVERRIDE, STORE_BONUS_TIER, MULTI_STORE -> null;
         };
     }
 
@@ -180,5 +240,16 @@ public record AiCommissionRequest(
 
     private static LocalDate resolveEndDate(MonthlyException exception) {
         return exception.getEndDate() == null ? exception.getYearMonth() : exception.getEndDate();
+    }
+
+    private static LocalDate resolveEndDate(MonthlyException exception, LocalDate month) {
+        if (exception.getEndDate() != null) {
+            return exception.getEndDate();
+        }
+        LocalDate reference = exception.getYearMonth() != null ? exception.getYearMonth() : month;
+        if (reference == null) {
+            return null;
+        }
+        return reference.withDayOfMonth(reference.lengthOfMonth());
     }
 }

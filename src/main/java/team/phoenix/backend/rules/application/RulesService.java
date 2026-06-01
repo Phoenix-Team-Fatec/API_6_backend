@@ -52,6 +52,8 @@ public interface RulesService {
      */
     GeneratedRuleResult generateFromNaturalLanguage(String prompt);
 
+    MonthlyException createScopedRateOverride(MonthlyException rule);
+
     /**
      * Atualiza uma regra existente, criando uma nova versão
      * @param id ID da regra

@@ -17,6 +17,36 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+      ml:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  ml:
+    container_name: api6-ml
+    build:
+      context: ../../API_6_ML
+      dockerfile: Dockerfile
+    working_dir: /app
+    env_file:
+      - ../../API_6_ML/.env
+    environment:
+      OLLAMA_HOST: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../../API_6_ML/scripts:/app/scripts:cached
+      - ../../API_6_ML/src:/app/src:cached
+      - ../../API_6_ML/vector_db:/app/vector_db
+    command: uvicorn scripts.main_api:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     networks:
       - app-network
 

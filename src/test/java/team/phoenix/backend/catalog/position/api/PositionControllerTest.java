@@ -24,9 +24,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import team.phoenix.backend.domain.model.Position;
 import team.phoenix.backend.catalog.position.application.PositionService;
+import team.phoenix.backend.WebMvcSecurityMocks;
 
 @WebMvcTest(PositionController.class)
-class PositionControllerTest {
+class PositionControllerTest extends WebMvcSecurityMocks {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean PositionService positionService;

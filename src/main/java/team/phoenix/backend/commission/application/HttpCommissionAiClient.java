@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -88,8 +89,13 @@ class HttpCommissionAiClient implements CommissionAiClient {
 
     private AiCommissionResult[] fromJson(String body) {
         try {
+            JsonNode root = objectMapper.readTree(body);
+            if (root.isArray()) {
+                return objectMapper.treeToValue(root, AiCommissionResult[].class);
+            }
+
             // Tenta fazer parse como resposta wrapper do Python
-            AiCommissionApiResponse response = objectMapper.readValue(body, AiCommissionApiResponse.class);
+            AiCommissionApiResponse response = objectMapper.treeToValue(root, AiCommissionApiResponse.class);
             
             if (response.resultados() == null || response.resultados().isEmpty()) {
                 return new AiCommissionResult[0];

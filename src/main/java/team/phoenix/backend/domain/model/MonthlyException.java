@@ -18,6 +18,7 @@ public class MonthlyException {
     private LocalDate startDate;
     private LocalDate endDate;
     private Double amount;
+    private Integer codLoja;
     private Integer codMarca;
     private Integer codCargo;
     private Double overrideRate;

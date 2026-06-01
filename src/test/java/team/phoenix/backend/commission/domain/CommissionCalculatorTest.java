@@ -128,6 +128,21 @@ class CommissionCalculatorTest {
         assertThat(r.commissionRate()).isCloseTo(0.020, within(0.0001));
     }
 
+    @Test void rateOverride_storeScoped_appliesOnlyToMatchingStore() {
+        var override = MonthlyException.builder().type(ExceptionType.RATE_OVERRIDE)
+            .yearMonth(LocalDate.of(2025,7,1)).codLoja(75)
+            .overrideRate(0.06).rateType(RateType.ABSOLUTE).build();
+        var matchingStore = calculator.calculate(hr("MS75", 10, 75, 100, LocalDate.of(2020,1,1), null),
+            10000.0, 0.0, 0.025, List.of(override), JULY);
+        var otherStore = calculator.calculate(hr("MS35", 10, 35, 100, LocalDate.of(2020,1,1), null),
+            10000.0, 0.0, 0.025, List.of(override), JULY);
+
+        assertThat(matchingStore.commissionRate()).isCloseTo(0.06, within(0.0001));
+        assertThat(matchingStore.commissionBase()).isCloseTo(600.0, within(D));
+        assertThat(otherStore.commissionRate()).isCloseTo(0.025, within(0.0001));
+        assertThat(otherStore.commissionBase()).isCloseTo(250.0, within(D));
+    }
+
     @Test void bonusFixed_addedToFinalCommission() {
         var bonus = MonthlyException.builder().type(ExceptionType.BONUS_FIXED)
             .matricula("MATRIC-134").yearMonth(LocalDate.of(2025,8,1)).amount(500.0).build();

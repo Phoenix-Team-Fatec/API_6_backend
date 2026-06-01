@@ -15,6 +15,7 @@ import team.phoenix.backend.commission.domain.CommissionResult;
 import team.phoenix.backend.commission.exception.CommissionRateNotFoundException;
 import team.phoenix.backend.commission.exception.EmployeeNotFoundException;
 import team.phoenix.backend.commission.exception.InvalidCommissionRequestException;
+import team.phoenix.backend.WebMvcSecurityMocks;
 import java.time.LocalDate;
 import java.util.List;
 import static org.mockito.Mockito.*;
@@ -23,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CommissionController.class)
-class CommissionControllerTest {
+class CommissionControllerTest extends WebMvcSecurityMocks {
 
     @Autowired MockMvc mockMvc;
     @MockitoBean CommissionService commissionService;
@@ -69,7 +70,7 @@ class CommissionControllerTest {
             CommissionTargetType.EMPLOYEE, "MATRIC-1", List.of(item), List.of(
                 new AppliedRuleDetail("rate-1", "Comissao PRETO Julho", "COMMISSION_RATE", "Regra PRETO")
             ));
-        when(commissionService.calculate(any())).thenReturn(result);
+        when(commissionService.calculate(any(), anyBoolean())).thenReturn(result);
 
         mockMvc.perform(post("/api/commission/calculate")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -88,7 +89,7 @@ class CommissionControllerTest {
     @Test void calculate_storeTarget_returnsOk() throws Exception {
         var result = new CommissionCalculationResult(LocalDate.of(2025,7,1),
             CommissionTargetType.STORE, "35", List.of(), 0.0, List.of());
-        when(commissionService.calculate(any())).thenReturn(result);
+        when(commissionService.calculate(any(), anyBoolean())).thenReturn(result);
 
         mockMvc.perform(post("/api/commission/calculate")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +102,7 @@ class CommissionControllerTest {
     @Test void calculate_brandTarget_returnsOk() throws Exception {
         var result = new CommissionCalculationResult(LocalDate.of(2025,7,1),
             CommissionTargetType.BRAND, "10", List.of(), 0.0, List.of());
-        when(commissionService.calculate(any())).thenReturn(result);
+        when(commissionService.calculate(any(), anyBoolean())).thenReturn(result);
 
         mockMvc.perform(post("/api/commission/calculate")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -120,7 +121,7 @@ class CommissionControllerTest {
     }
 
     @Test void calculate_returns400ForInvalidRequest() throws Exception {
-        when(commissionService.calculate(any()))
+        when(commissionService.calculate(any(), anyBoolean()))
             .thenThrow(new InvalidCommissionRequestException("matricula is required for EMPLOYEE target"));
 
         mockMvc.perform(post("/api/commission/calculate")
@@ -132,7 +133,7 @@ class CommissionControllerTest {
 
     @Test void calculate_returns404ForMissingEmployeeOrRate() throws Exception {
         doThrow(new EmployeeNotFoundException("No HR records found"))
-            .when(commissionService).calculate(any());
+            .when(commissionService).calculate(any(), anyBoolean());
 
         mockMvc.perform(post("/api/commission/calculate")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -141,7 +142,7 @@ class CommissionControllerTest {
 
         reset(commissionService);
         doThrow(new CommissionRateNotFoundException("Commission rate not found"))
-            .when(commissionService).calculate(any());
+            .when(commissionService).calculate(any(), anyBoolean());
 
         mockMvc.perform(post("/api/commission/calculate")
                 .contentType(MediaType.APPLICATION_JSON)

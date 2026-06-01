@@ -14,6 +14,7 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
 
     private static final double ABSENCE_FLOOR = 3500.0;
     private static final int MANAGER_CARGO = 150;
+    private final RateOverrideResolver rateOverrideResolver = new RateOverrideResolver();
 
     // Calcula comissão para um funcionário em um mês
     // Parâm hr: registro de RH do funcionário
@@ -87,16 +88,7 @@ public class CommissionCalculatorImpl implements CommissionCalculator {
     // Parâm exceptions: lista de excepções
     // Retorna: taxa efetiva após aplicar sobrescritas (ABSOLUTA ou ADITIVA)
     private double applyRateOverride(double rate, HrRecord hr, List<MonthlyException> exceptions) {
-        for (var ex : exceptions) {
-            if (ex.getType() != ExceptionType.RATE_OVERRIDE) continue;
-            if (ex.getCodMarca() != null && !ex.getCodMarca().equals(hr.getCodMarca())) continue;
-            if (ex.getCodCargo() != null && !ex.getCodCargo().equals(hr.getCodCargo())) continue;
-            if (!ex.isAppliesToManagers() && hr.getCodCargo() == MANAGER_CARGO) continue;
-            rate = ex.getRateType() == RateType.ABSOLUTE
-                ? ex.getOverrideRate()
-                : rate + ex.getOverrideRate();
-        }
-        return rate;
+        return rateOverrideResolver.resolve(rate, hr, exceptions);
     }
 
     // Aplica bônus (fixos e por faixa de venda) ao cálculo

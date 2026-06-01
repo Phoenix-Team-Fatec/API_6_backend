@@ -9,6 +9,9 @@ import team.phoenix.backend.ai.application.AiAgentIntercorrencia;
 import team.phoenix.backend.ai.application.AiAgentOverride;
 import team.phoenix.backend.ai.application.AiAgentResponse;
 import team.phoenix.backend.ai.application.AiIntegrationClient;
+import team.phoenix.backend.ai.application.AiRuleEffect;
+import team.phoenix.backend.ai.application.AiRuleScope;
+import team.phoenix.backend.ai.application.AiScopedRateRule;
 import team.phoenix.backend.audit.application.AuditLogService;
 import team.phoenix.backend.audit.domain.AuditAction;
 import team.phoenix.backend.audit.domain.AuditResourceType;
@@ -180,6 +183,46 @@ class RulesServiceTest {
         assertThat(service.listExceptions(LocalDate.of(2025,7,1), null, "MATRIC-58")).hasSize(1);
     }
 
+    @Test void createScopedRateOverride_persistsStoreAbsoluteRule() {
+        var input = MonthlyException.builder()
+            .yearMonth(LocalDate.of(2025, 7, 1))
+            .codLoja(75)
+            .overrideRate(0.06)
+            .rateType(RateType.ABSOLUTE)
+            .build();
+        when(exceptionRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.createScopedRateOverride(input);
+
+        assertThat(result.getType()).isEqualTo(ExceptionType.RATE_OVERRIDE);
+        assertThat(result.getYearMonth()).isEqualTo(LocalDate.of(2025, 7, 1));
+        assertThat(result.getStartDate()).isEqualTo(LocalDate.of(2025, 7, 1));
+        assertThat(result.getEndDate()).isEqualTo(LocalDate.of(2025, 7, 31));
+        assertThat(result.getCodLoja()).isEqualTo(75);
+        assertThat(result.getOverrideRate()).isEqualTo(0.06);
+        assertThat(result.getRateType()).isEqualTo(RateType.ABSOLUTE);
+        assertThat(result.isAppliesToManagers()).isTrue();
+        verify(exceptionRepo).save(argThat(exception ->
+            exception.getType() == ExceptionType.RATE_OVERRIDE
+                && exception.getCodLoja().equals(75)
+                && exception.getOverrideRate().equals(0.06)
+                && exception.getRateType() == RateType.ABSOLUTE
+        ));
+    }
+
+    @Test void createScopedRateOverride_rejectsRuleWithoutScope() {
+        var input = MonthlyException.builder()
+            .yearMonth(LocalDate.of(2025, 7, 1))
+            .overrideRate(0.06)
+            .rateType(RateType.ABSOLUTE)
+            .build();
+
+        assertThatThrownBy(() -> service.createScopedRateOverride(input))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("at least one scope field is required");
+        verify(exceptionRepo, never()).save(any());
+    }
+
     @Test void generateFromNaturalLanguage_withOverride_createsCommissionRateUsingAiExplanation() {
         var prompt = "Em maio de 2026, marca 10 cargo 100 recebe 5% de comissao";
         var override = new AiAgentOverride(
@@ -261,6 +304,40 @@ class RulesServiceTest {
             exception.getType() == ExceptionType.BONUS_FIXED
                 && exception.getMatricula().equals("MATRIC-1")
                 && exception.getAmount().equals(500.0)
+        ));
+    }
+
+    @Test void generateFromNaturalLanguage_withRateOverride_createsScopedMonthlyException() {
+        var prompt = "Todos os funcionarios da loja 75 recebem 6% em julho";
+        var aiRule = new AiScopedRateRule(
+            "Todos os funcionarios da loja 75 recebem 6%.",
+            LocalDate.of(2025, 7, 1),
+            LocalDate.of(2025, 7, 31),
+            new AiRuleScope(null, 75, null, null),
+            new AiRuleEffect("percentual_absoluto", 0.06)
+        );
+        var aiResponse = new AiAgentResponse(
+            "rate_override",
+            null,
+            null,
+            List.of(aiRule),
+            "A IA gerou regra escopada por loja."
+        );
+        when(aiIntegrationClient.askAgent(prompt)).thenReturn(aiResponse);
+        when(exceptionRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.generateFromNaturalLanguage(prompt);
+
+        assertThat(result.tipo()).isEqualTo("rate_override");
+        assertThat(result.rules()).isEmpty();
+        assertThat(result.exceptions()).hasSize(1);
+        verify(exceptionRepo).save(argThat(exception ->
+            exception.getType() == ExceptionType.RATE_OVERRIDE
+                && exception.getCodLoja().equals(75)
+                && exception.getOverrideRate().equals(0.06)
+                && exception.getRateType() == RateType.ABSOLUTE
+                && exception.getStartDate().equals(LocalDate.of(2025, 7, 1))
+                && exception.getEndDate().equals(LocalDate.of(2025, 7, 31))
         ));
     }
 
