@@ -321,7 +321,8 @@ class RulesServiceTest {
             null,
             null,
             List.of(aiRule),
-            "A IA gerou regra escopada por loja."
+            "A IA gerou regra escopada por loja.",
+            null
         );
         when(aiIntegrationClient.askAgent(prompt)).thenReturn(aiResponse);
         when(exceptionRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));

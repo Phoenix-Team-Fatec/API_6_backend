@@ -185,6 +185,18 @@ public class RulesController {
         return ResponseEntity.notFound().build();
     }
 
+    @DeleteMapping("/exceptions/{id}")
+    public ResponseEntity<?> deleteException(@PathVariable String id) {
+        try {
+            rulesService.deleteException(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Erro ao excluir override: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/exceptions")
     public ResponseEntity<?> listExceptions(
             @RequestParam String month,

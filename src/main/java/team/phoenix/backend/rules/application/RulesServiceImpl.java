@@ -27,6 +27,7 @@ import team.phoenix.backend.domain.repository.BrandRepository;
 import team.phoenix.backend.domain.repository.CommissionRateRepository;
 import team.phoenix.backend.domain.repository.MonthlyExceptionRepository;
 import team.phoenix.backend.domain.repository.PositionRepository;
+import team.phoenix.backend.domain.repository.StoreRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +37,7 @@ public class RulesServiceImpl implements RulesService {
     private final MonthlyExceptionRepository exceptionRepo;
     private final BrandRepository brandRepository;
     private final PositionRepository positionRepository;
+    private final StoreRepository storeRepository;
     private final AiIntegrationClient aiIntegrationClient;
     private final AuditLogService auditLogService;
 
@@ -160,7 +162,8 @@ public class RulesServiceImpl implements RulesService {
             throw new IllegalArgumentException("prompt is required");
         }
 
-        AiAgentResponse response = aiIntegrationClient.askAgent(prompt);
+        String enrichedPrompt = buildCatalogContext() + prompt;
+        AiAgentResponse response = aiIntegrationClient.askAgent(enrichedPrompt);
         if (response == null || response.tipo() == null) {
             throw new IllegalArgumentException("AI returned an empty response");
         }
@@ -188,7 +191,7 @@ public class RulesServiceImpl implements RulesService {
             .map(entry -> createRateFromAiOverride(prompt, response.justificativa(), override, entry.getKey(), entry.getValue()))
             .toList();
 
-        return new GeneratedRuleResult(response.tipo(), response.justificativa(), created, List.of());
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), created, List.of(), response.tokenUsage());
     }
 
     private CommissionRate createRateFromAiOverride(
@@ -227,7 +230,7 @@ public class RulesServiceImpl implements RulesService {
             .map(this::createExceptionFromAiIntercorrencia)
             .toList();
 
-        return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created);
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created, response.tokenUsage());
     }
 
     private GeneratedRuleResult persistGeneratedRateOverrides(AiAgentResponse response) {
@@ -239,7 +242,7 @@ public class RulesServiceImpl implements RulesService {
             .map(this::createExceptionFromAiScopedRateRule)
             .toList();
 
-        return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created);
+        return new GeneratedRuleResult(response.tipo(), response.justificativa(), List.of(), created, response.tokenUsage());
     }
 
     private MonthlyException createExceptionFromAiIntercorrencia(AiAgentIntercorrencia intercorrencia) {
@@ -278,16 +281,23 @@ public class RulesServiceImpl implements RulesService {
             throw new IllegalArgumentException("AI rate_override item must include efeito");
         }
 
+        Integer codMarca = aiRule.escopo().codMarca();
+        Integer codCargo = aiRule.escopo().codCargo();
+        Integer codLoja = aiRule.escopo().codLoja();
+
         MonthlyException exception = MonthlyException.builder()
             .yearMonth(firstDayOfMonth(aiRule.vigenciaInicio()))
             .startDate(aiRule.vigenciaInicio())
             .endDate(aiRule.vigenciaFim())
             .matricula(aiRule.escopo().matricula())
-            .codLoja(aiRule.escopo().codLoja())
-            .codMarca(aiRule.escopo().codMarca())
-            .codCargo(aiRule.escopo().codCargo())
+            .codLoja(codLoja)
+            .descrLoja(codLoja != null ? resolveStoreName(codLoja) : null)
+            .codMarca(codMarca)
+            .descrMarca(codMarca != null ? resolveBrandName(codMarca) : null)
+            .codCargo(codCargo)
+            .descriCargo(codCargo != null ? resolvePositionName(codCargo) : null)
             .rateType(mapAiRuleEffectType(aiRule.efeito().tipo()))
-            .overrideRate(aiRule.efeito().valor())
+            .overrideRate(normalizePercent(aiRule.efeito().valor()))
             .build();
 
         return createScopedRateOverride(exception);
@@ -322,6 +332,34 @@ public class RulesServiceImpl implements RulesService {
         return exceptionRepo.save(rule);
     }
 
+    private String buildCatalogContext() {
+        var brands = brandRepository.findAll().stream()
+            .filter(b -> b.getCodigo() != null && b.getNome() != null && !b.getNome().isBlank())
+            .map(b -> b.getNome() + "(cod=" + b.getCodigo() + ")")
+            .toList();
+
+        var stores = storeRepository.findAll().stream()
+            .filter(s -> s.getCodigo() != null && s.getNome() != null && !s.getNome().isBlank())
+            .map(s -> s.getNome() + "(cod=" + s.getCodigo() + ")")
+            .toList();
+
+        var positions = positionRepository.findAll().stream()
+            .filter(p -> p.getCodigo() != null && p.getNome() != null && !p.getNome().isBlank())
+            .map(p -> p.getNome() + "(cod=" + p.getCodigo() + ")")
+            .toList();
+
+        if (brands.isEmpty() && stores.isEmpty() && positions.isEmpty()) {
+            return "";
+        }
+
+        var sb = new StringBuilder("[CATÁLOGO DE REFERÊNCIA]\n");
+        if (!brands.isEmpty()) sb.append("Marcas: ").append(String.join(", ", brands)).append("\n");
+        if (!stores.isEmpty()) sb.append("Lojas: ").append(String.join(", ", stores)).append("\n");
+        if (!positions.isEmpty()) sb.append("Cargos: ").append(String.join(", ", positions)).append("\n");
+        sb.append("[/CATÁLOGO]\n\n");
+        return sb.toString();
+    }
+
     private String resolveBrandName(Integer codMarca) {
         return brandRepository.findByCodigo(codMarca)
             .map(brand -> brand.getNome())
@@ -334,6 +372,13 @@ public class RulesServiceImpl implements RulesService {
             .map(position -> position.getNome())
             .filter(name -> !name.isBlank())
             .orElse("Cargo " + codCargo);
+    }
+
+    private String resolveStoreName(Integer codLoja) {
+        return storeRepository.findByCodigo(codLoja)
+            .map(store -> store.getNome())
+            .filter(name -> !name.isBlank())
+            .orElse("Loja " + codLoja);
     }
 
     private double normalizePercent(Double percent) {
@@ -540,6 +585,13 @@ public class RulesServiceImpl implements RulesService {
         if (type != null) return exceptionRepo.findByYearMonthAndType(yearMonth, type);
         if (matricula != null) return exceptionRepo.findByYearMonthAndMatricula(yearMonth, matricula);
         return exceptionRepo.findByYearMonth(yearMonth);
+    }
+
+    @Override
+    public void deleteException(String id) {
+        MonthlyException exception = exceptionRepo.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Exceção não encontrada: " + id));
+        exceptionRepo.delete(exception);
     }
 
     private void validateCreateRate(CommissionRate rule) {

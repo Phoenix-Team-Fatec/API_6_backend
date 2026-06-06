@@ -210,7 +210,7 @@ class RulesControllerTest extends WebMvcSecurityMocks {
             .createdAt(LocalDateTime.now())
             .build();
         when(rulesService.generateFromNaturalLanguage("Criar regra de 5%"))
-            .thenReturn(new GeneratedRuleResult("override", "Regra gerada pela IA", List.of(rate), List.of()));
+            .thenReturn(new GeneratedRuleResult("override", "Regra gerada pela IA", List.of(rate), List.of(), null));
 
         mockMvc.perform(post("/api/rules/generate")
                 .contentType("application/json")

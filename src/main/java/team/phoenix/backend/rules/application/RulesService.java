@@ -108,4 +108,10 @@ public interface RulesService {
      * @return lista de exceções mensais
      */
     List<MonthlyException> listExceptions(LocalDate yearMonth, ExceptionType type, String matricula);
+
+    /**
+     * Remove permanentemente uma exceção pelo ID
+     * @param id ID da exceção
+     */
+    void deleteException(String id);
 }

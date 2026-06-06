@@ -19,8 +19,11 @@ public class MonthlyException {
     private LocalDate endDate;
     private Double amount;
     private Integer codLoja;
+    private String descrLoja;
     private Integer codMarca;
+    private String descrMarca;
     private Integer codCargo;
+    private String descriCargo;
     private Double overrideRate;
     private RateType rateType;
     private List<BonusTier> bonusTiers;
